@@ -48,7 +48,7 @@ class SpeedyStepper
     // public functions
     //
     SpeedyStepper();
-    void connectToPins(byte stepPinNumber, byte directionPinNumber);
+    void connectToPins(byte stepPinNumber, byte directionPinNumber, byte enablePinNumber);
     
     void setStepsPerMillimeter(float motorStepPerMillimeter);
     float getCurrentPositionInMillimeters();
@@ -98,6 +98,7 @@ class SpeedyStepper
     //
     byte stepPin;
     byte directionPin;
+    byte enablePin;
     float desiredSpeed_InStepsPerSecond;
     float acceleration_InStepsPerSecondPerSecond;
     long targetPosition_InSteps;

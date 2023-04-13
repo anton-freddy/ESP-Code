@@ -189,7 +189,7 @@
 //
 
 
-#include "SpeedyStepper.h"
+#include "SpeedyStepperCustom.h"
 
 
 // ---------------------------------------------------------------------------------
@@ -223,22 +223,27 @@ SpeedyStepper::SpeedyStepper()
 //          enablePinNumber = IO pin number for the enable bit (LOW is enabled)
 //            set to 0 if enable is not supported
 //
-void SpeedyStepper::connectToPins(byte stepPinNumber, byte directionPinNumber)
+void SpeedyStepper::connectToPins(byte stepPinNumber, byte directionPinNumber, byte enaablePinNumber)
 {
   //
   // remember the pin numbers
   //
   stepPin = stepPinNumber;
   directionPin = directionPinNumber;
+  enablePin = enaablePinNumber;
   
   //
   // configure the IO bits
   //
+  pinMode(enablePin, OUTPUT);
+  digitalWrite(enablePin, HIGH);
+
   pinMode(stepPin, OUTPUT);
   digitalWrite(stepPin, LOW);
 
   pinMode(directionPin, OUTPUT);
   digitalWrite(directionPin, LOW);
+
 }
 
 
@@ -590,6 +595,13 @@ float SpeedyStepper::getCurrentVelocityInRevolutionsPerSecond()
 // ---------------------------------------------------------------------------------
 //                        Public functions with units in steps 
 // ---------------------------------------------------------------------------------
+
+void SpeedyStepper::enableStepper(void){
+  digitalWrite(enablePin, LOW);
+}
+void SpeedyStepper::disableStepper(void){
+  digitalWrite(enablePin, HIGH);
+}
 
 
 //
