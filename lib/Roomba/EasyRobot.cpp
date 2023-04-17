@@ -42,6 +42,12 @@ void EasyRobot::begin(unit speed_units, float stepsPerMillimeters, float speed, 
 
   leftMotor.enableStepper();
   rightMotor.enableStepper();
+
+  xCoordinate = 0;
+  yCoordinate = 0;
+  orientation = 0;
+  L_MOVE_DONE = false;
+  R_MOVE_DONE = false;
   
 }
 
@@ -63,30 +69,61 @@ float EasyRobot::getOrientation() const
   return orientation;
 }
 
+// Returns the angle by which the robot needs to rotate based on the change in X and Y and the previous orientation
+float EasyRobot::calculateOrientation(float deltaX, float deltaY)
+{
+
+  if((deltaX > 0) && (deltaY > 0)){         // Positive X, Positive Y - Quadrant 1
+    return(atan(deltaX/deltaY));
+
+  }else if((deltaX > 0) && (deltaY < 0)){   // Positive X, Negative Y - Quadrant 2
+    return((PI/2) + ((PI/2) - atan(deltaX/deltaY)));
+
+  }else if((deltaX < 0) && (deltaY < 0)){   // Negative X, Negative Y - Quadrant 3
+    return(PI + atan(deltaX/deltaY));
+
+  }else if((deltaX > 0) && (deltaY < 0)){   // Negative X, Positive Y - Quadrant 4
+    return((2*PI) + atan(deltaX/deltaY));
+
+  }else if(deltaX == 0){
+    if(deltaY > 0){
+      return(0);
+    }else{
+      return(PI);
+    }
+  }else{
+    if(deltaX > 0){
+      return(0.5*PI);
+    }else{
+      return(1.5*PI);
+    }
+  }
+}
 // Move the robot directly to a target position (X, Y)
 void EasyRobot::moveTo(float targetX, float targetY)
     {
       float deltaX = targetX - xCoordinate;
       float deltaY = targetY - yCoordinate;
-      float targetOrientation;
-
-
-      if(deltaX == 0){
-        if(deltaY > 0){
-          targetOrientation = 0;
-        }else{
-          targetOrientation = PI;
-        }
-      }else if(deltaY == 0){
-        if(deltaX > 0){
-          targetOrientation = 0.5*PI;
-        }else{
-          targetOrientation = 1.5*PI;
-        }
-      }else{
-        targetOrientation = atan(deltaX/deltaY);
-      }
+      float targetOrientation = calculateOrientation(deltaX, deltaY);
       float deltaOrientation = targetOrientation - orientation;
+
+
+      // if(deltaX == 0){
+      //   if(deltaY > 0){
+      //     targetOrientation = 0;
+      //   }else{
+      //     targetOrientation = PI;
+      //   }
+      // }else if(deltaY == 0){
+      //   if(deltaX > 0){
+      //     targetOrientation = 0.5*PI;
+      //   }else{
+      //     targetOrientation = 1.5*PI;
+      //   }
+      // }else{
+      //   targetOrientation = atan(deltaX/deltaY);
+      // }
+      
 
 
 
@@ -111,7 +148,7 @@ void EasyRobot::moveTo(float targetX, float targetY)
       rightMotor.setupMoveInMillimeters(distance_diagonal);
 
       // Update the position and orientation
-      updatePosition(targetX, targetY, targetOrientation);
+      updatePosition(deltaX, deltaY, targetOrientation);
     }
 
 bool EasyRobot::processMovement(){

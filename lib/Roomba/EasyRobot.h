@@ -13,6 +13,7 @@ class EasyRobot
     bool L_MOVE_DONE;
     bool R_MOVE_DONE;
     void updatePosition(float deltaX, float deltaY, float targetOrientation);
+    float calculateOrientation(float deltaX, float deltaY);
 
   public:
     SpeedyStepper leftMotor;

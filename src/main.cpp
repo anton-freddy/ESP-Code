@@ -8,34 +8,54 @@ EasyRobot ROOMBA(L_Stepper_STEP_PIN, L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_
 
 void setup() {
   ROOMBA.begin(KMH, 19.1525439, 1.5, 1000);
-  ROOMBA.moveTo(0, 400);
+  Serial.begin(115200);
+  ROOMBA.moveTo(0, 1000);
+
   
   // ROOMBA.leftMotor.setupMoveInMillimeters(500);
   // ROOMBA.rightMotor.setupMoveInMillimeters(500);
 
 }
 
-// void loop() {
-//   digitalWrite(SERVO_PIN, HIGH);
-//   delay(10);
-//   digitalWrite(SERVO_PIN, LOW);
-//   delay(10);
-// }
-
-
+int previousMillis = 0;
+int currentMillis = 0;
 void loop(){
+  start:
+  currentMillis = millis();
+  if (currentMillis > previousMillis + 300){
+    previousMillis = currentMillis;
+    Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
+  }
 
+  //Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
  if(ROOMBA.processMovement()){
-    ROOMBA.moveTo(400, 0);
+    ROOMBA.moveTo(1000, 0);
     while(1){
+      currentMillis = millis();
+      if (currentMillis > previousMillis + 300){
+        previousMillis = currentMillis;
+        Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
+      }
       if(ROOMBA.processMovement()){
-        ROOMBA.moveTo(0, 0);
+        ROOMBA.moveTo(1000, 1000);
         while(1){
+          currentMillis = millis();
+          if (currentMillis > previousMillis + 300){
+            previousMillis = currentMillis;
+            Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
+          }
           if(ROOMBA.processMovement()){
-            ROOMBA.moveTo(400,400);
+            ROOMBA.moveTo(0,0);
             while(1){
+              currentMillis = millis();
+              if (currentMillis > previousMillis + 300){
+                previousMillis = currentMillis;
+                Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
+              }
               if(ROOMBA.processMovement()){
-                while(1);
+                ROOMBA.moveTo(0, 1000);
+                goto start;
+                
               }
             }
           }
