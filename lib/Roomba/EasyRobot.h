@@ -12,6 +12,12 @@ class EasyRobot
     float orientation;
     bool L_MOVE_DONE;
     bool R_MOVE_DONE;
+    bool ROTATE_MOVE;
+    bool STRAIGHT_MOVE;
+
+    float nextMoveOrientation;
+    float nextMoveDiagDistance;
+
     void updatePosition(float deltaX, float deltaY, float targetOrientation);
     float calculateOrientation(float deltaX, float deltaY);
 

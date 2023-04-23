@@ -1,12 +1,12 @@
 #include <EasyRobot.h>
 
-const float rotationConstant = 160.49877; // Must be adjusted based on wheel distance and mounting points
+const float rotationConstant = 158.3;//160.49877; // Must be adjusted based on wheel distance and mounting points
 
-void EasyRobot::updatePosition(float deltaX, float deltaY, float targetOrientation)
+void EasyRobot::updatePosition(float deltaX, float deltaY, float deltaOrientation)
 {
   xCoordinate += deltaX;
   yCoordinate += deltaY;
-  orientation = targetOrientation;
+  orientation += deltaOrientation;
 }
 
 
@@ -20,6 +20,8 @@ EasyRobot::EasyRobot(int leftMotorStepPin, int leftMotorDirPin, int leftMotorEna
   orientation = 0;
   L_MOVE_DONE = false;
   R_MOVE_DONE = false;
+  ROTATE_MOVE = false;
+  STRAIGHT_MOVE = false;
 }
 
 // Initialize the robot, for unit pick either KMH or MMS
@@ -146,19 +148,66 @@ void EasyRobot::moveTo(float targetX, float targetY)
       rightMotor.setCurrentPositionInMillimeters(0L);
       leftMotor.setupMoveInMillimeters(distance_diagonal);
       rightMotor.setupMoveInMillimeters(distance_diagonal);
+      nextMoveDiagDistance = distance_diagonal;
 
       // Update the position and orientation
-      updatePosition(deltaX, deltaY, targetOrientation);
+      updatePosition(deltaX, deltaY, deltaOrientation);
     }
 
 bool EasyRobot::processMovement(){
 
+  if(ROTATE_MOVE){
+    float L_dist = leftMotor.getCurrentPositionInMillimeters();
+    float R_dist = rightMotor.getCurrentPositionInMillimeters();
+    float distance;
+    if((L_dist * -1) == R_dist){
+      distance = L_dist;
+    }
+
+    float FinalOrientation = distance/rotationConstant;
+    float deltaOrientation = FinalOrientation - orientation;
+    updatePosition(0,0, deltaOrientation);
+    if(orientation == nextMoveOrientation){
+      ROTATE_MOVE = false;
+    }
+
+  }else{
+    float L_dist = leftMotor.getCurrentPositionInMillimeters();
+    float R_dist = rightMotor.getCurrentPositionInMillimeters();
+    float deltaDistance;
+    if((L_dist *-1) == R_dist){
+      deltaDistance = L_dist;
+    }
+    float deltaX;
+    float deltaY;
+
+    if(0 <= orientation <= (PI*0.5) ){
+      deltaX = deltaDistance*sin(orientation);
+      deltaY = deltaDistance*cos(orientation);
+
+    }else if((PI*0.5) < orientation <= PI){
+      deltaX = deltaDistance*sin(PI-orientation);
+      deltaY = deltaDistance*cos(PI-orientation);
+
+    }else if(PI < orientation <= (PI*1.5)){
+      deltaX = deltaDistance*sin(orientation-PI);
+      deltaY = deltaDistance*cos(orientation-PI);
+      
+    }else{
+      deltaX = deltaDistance*sin((2*PI)-orientation);
+      deltaY = deltaDistance*cos((2*PI)-orientation);
+
+    }
+  }
+
   if(leftMotor.processMovement()){
     L_MOVE_DONE = true;
+    leftMotor.setCurrentPositionInMillimeters(0L);
   }
 
   if(rightMotor.processMovement()){
     R_MOVE_DONE = true;
+    rightMotor.setCurrentPositionInMillimeters(0L);
   }
 
   if(L_MOVE_DONE && R_MOVE_DONE){
@@ -182,17 +231,20 @@ void EasyRobot::moveForward(float distance)
 void EasyRobot::turn(float angle)
 {
   float newAngle;
-  if(angle > 3.14159){
-    newAngle = -3.14159 - ((3.14159-angle));
+  if(angle > PI){
+    newAngle = -PI + (PI - angle);
+  }else if(angle < -PI){
+    newAngle = PI - (-PI + angle);
   }else{
     newAngle = angle;
-  };
-
+  }
+  nextMoveOrientation = newAngle + orientation;
   float distance = newAngle * rotationConstant;
   leftMotor.setCurrentPositionInMillimeters(0L);
   rightMotor.setCurrentPositionInMillimeters(0L);
   leftMotor.setupMoveInMillimeters(distance);
   rightMotor.setupMoveInMillimeters(-distance);
+  ROTATE_MOVE = true;
 
 }
 
