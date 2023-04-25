@@ -1,8 +1,11 @@
 #include <Arduino.h>
 #include <SpeedyStepperCustom.h>
 #include <math.h>
+#include <queue>
 
 enum unit { KMH = 1, MMS = 2 };
+
+
 
 class EasyRobot
 {
@@ -17,11 +20,13 @@ class EasyRobot
 
     float nextMoveOrientation;
     float nextMoveDiagDistance;
+    std::queue<EasyRobot> move_queue;
 
     void updatePosition(float deltaX, float deltaY, float targetOrientation);
     float calculateOrientation(float deltaX, float deltaY);
 
   public:
+    
     SpeedyStepper leftMotor;
     SpeedyStepper rightMotor;
     EasyRobot(int leftMotorStepPin, int leftMotorDirPin, int leftMotorEnablePin, int rightMotorStepPin, int rightMotorDirPin, int rightMotorEnablePin);
@@ -37,6 +42,8 @@ class EasyRobot
   
     void stop();
 
+    void add_move(float targetX, float targetY);
+    void add_rot_move(float deltaTheta);
 
     void setSpeedInKMH(float speed);
     void setSpeedInMMS(float speed);

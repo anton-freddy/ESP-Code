@@ -1,6 +1,6 @@
 #include <EasyRobot.h>
 
-const float rotationConstant = 158.3;//160.49877; // Must be adjusted based on wheel distance and mounting points
+const float rotationConstant = 171.931; //158.3;//160.49877; // Must be adjusted based on wheel distance and mounting points
 
 void EasyRobot::updatePosition(float deltaX, float deltaY, float deltaOrientation)
 {
@@ -166,7 +166,7 @@ bool EasyRobot::processMovement(){
 
     float FinalOrientation = distance/rotationConstant;
     float deltaOrientation = FinalOrientation - orientation;
-    updatePosition(0,0, deltaOrientation);
+    //updatePosition(0,0, deltaOrientation);
     if(orientation == nextMoveOrientation){
       ROTATE_MOVE = false;
     }
@@ -178,6 +178,7 @@ bool EasyRobot::processMovement(){
     if((L_dist *-1) == R_dist){
       deltaDistance = L_dist;
     }
+    
     float deltaX;
     float deltaY;
 
@@ -198,6 +199,8 @@ bool EasyRobot::processMovement(){
       deltaY = deltaDistance*cos((2*PI)-orientation);
 
     }
+
+    //updatePosition(deltaX, deltaY, 0);
   }
 
   if(leftMotor.processMovement()){
