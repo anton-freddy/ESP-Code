@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WebServer.h>
+#include <deque>
 
 
 
@@ -16,23 +17,48 @@
 
 const char* ssid = "Eraseinator_3000";
 const char* password = "NotPerry";
+const int MAX_LOG_SIZE = 10;
 SpeedyStepper S1, S2;
 
 WebServer server(80);
 
 //LED ints
+std::deque<String> logData;
 int xCord = 0;
 int yCord = 0;
 
+void addLogEntry(const String& status) {
+  // Remove the oldest entry if the log is full
+  if (logData.size() >= MAX_LOG_SIZE) {
+    logData.pop_front();
+  }
+
+  // Add the new status string to the log
+  logData.push_back(status);
+}
+
+String generateLogHTML() {
+  String html = "<div id='log'>";
+  
+  // Iterate through the log entries and generate HTML for each entry
+  for (const auto& entry : logData) {
+    html += "<p>" + entry + "</p>";
+  }
+  
+  html += "</div>";
+  return html;
+}
+
 void handleRoot() {
   String html = "<html><head>";
-html += "<style>";
+  html += "<style>";
   html += "body { background-color: #F7F3E3; font-family: Arial, sans-serif; margin: 0; padding: 0; }";
   html += "header { background-color: #28536B; color: #fff; padding: 20px; text-align: center; }";
   html += "nav { background-color: #AF9164; padding: 10px; text-align: center; }";
   html += "nav a { color: #F7F3E3; padding: 10px; text-decoration: none; }";
   html += "main { text-align: center; color: #0B0500; padding: 20px; }";
   html += "footer { background-color: #28536B; color: #fff; padding: 20px; text-align: center; }";
+  html += "#log { text-align: left; margin-top: 20px; padding: 10px; background-color: #E5E5E5; }";
   html += "</style>";
   html += "</head><body>";
   html += "<header><h1>Doofinschmirtz Inc</h1></header>";
@@ -45,10 +71,15 @@ html += "<style>";
   html += "<input type='number' id='value2' name='value2' value='" + String(yCord) + "'><br><br>";
   html += "<input type='submit' value='Update'>";
   html += "</form>";
+  html += "<br>";
   html += "<h2>Current coordinates </h2>";
   html += "<p>X: " + String(xCord) + "</p>";
-  html += "<p>Y: " + String(yCord) + "</p>";
- html += "</main>";
+  html += "<p>Y: " + String(yCord) + "</p>"; 
+  html += "<br>";
+  html += "<br>";
+  html += "<h2>Current Status </h2>";
+  html += "<div id='log'>" + generateLogHTML() + "</div>";
+  html += "</main>";
   html += "<footer><p>&copy; 2023 Doofinschmirtz. All rights reserved.</p></footer>";
   html += "</body></html>";
 
@@ -72,8 +103,8 @@ void handleUpdate() {
 void setup() {
   Serial.begin(115200);
 
-   pinMode(18, OUTPUT);
-   pinMode(16, OUTPUT);
+  // pinMode(18, OUTPUT);
+ //  pinMode(16, OUTPUT);
   // while (1){
   //   digitalWrite(14, HIGH);
   //   digitalWrite(13, HIGH);
@@ -143,7 +174,13 @@ void loop(){
    if (yCord == 1){
     digitalWrite(16, HIGH);
   }else {
-    digitalWrite(16, LOW);
+    digitalWrite(16, LOW); 
+    
+  String status = "New status";  // Replace with your actual status string
+  addLogEntry(status);
+  
+  // Handle client requests
+  server.handleClient();
   }
    
 
