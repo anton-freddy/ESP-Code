@@ -11,17 +11,9 @@ void EasyRobot::updatePosition(float deltaX, float deltaY, float deltaOrientatio
 
 
 // Constructor
-EasyRobot::EasyRobot(int leftMotorStepPin, int leftMotorDirPin, int leftMotorEnablePin, int rightMotorStepPin, int rightMotorDirPin, int rightMotorEnablePin)
+EasyRobot::EasyRobot()
 {
-  leftMotor.connectToPins(leftMotorStepPin, leftMotorDirPin, leftMotorEnablePin);
-  rightMotor.connectToPins(rightMotorStepPin, rightMotorDirPin, rightMotorEnablePin);
-  xCoordinate = 0;
-  yCoordinate = 0;
-  orientation = 0;
-  L_MOVE_DONE = false;
-  R_MOVE_DONE = false;
-  ROTATE_MOVE = false;
-  STRAIGHT_MOVE = false;
+
 }
 
 // Initialize the robot, for unit pick either KMH or MMS
@@ -50,7 +42,14 @@ void EasyRobot::begin(unit speed_units, float stepsPerMillimeters, float speed, 
   orientation = 0;
   L_MOVE_DONE = false;
   R_MOVE_DONE = false;
+  ROTATE_MOVE = false;
+  STRAIGHT_MOVE = false;
   
+}
+
+void EasyRobot::setUpPins(int leftMotorStepPin, int leftMotorDirPin, int leftMotorEnablePin, int rightMotorStepPin, int rightMotorDirPin, int rightMotorEnablePin){
+  leftMotor.connectToPins(leftMotorStepPin, leftMotorDirPin, leftMotorEnablePin);
+  rightMotor.connectToPins(rightMotorStepPin, rightMotorDirPin, rightMotorEnablePin);
 }
 
 // Get the current X coordinate

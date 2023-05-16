@@ -8,44 +8,13 @@
 #include <string>
 #include <iostream>
 #include "esp_task_wdt.h"
+
+EasyRobot ROOMBA;
+
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <deque>
-
-EasyRobot ROOMBA(L_Stepper_STEP_PIN, L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN);
-
-Pwm pwm = Pwm();
-
-int previousMillis = 0;
-int currentMillis = 0;
-bool SERVO_CLOCKWISE = true;
-int SERVO_pos = 0;
-
-void core0_task(void *pvParameters);
-
-void loop_task1(void);
-void loop_task2(void);
-void setup_task1(void);
-
-void core0_task(void *pvParameters)
-{
-  setup_task1();
-  while (1)
-  {
-    loop_task1();
-  }
-}
-
-void setup_task1(void)
-{
-  network_setup();
-}
-
-
-
-
-
 
 const char* ssid = "Eraseinator_3000";
 const char* password = "NotPerry";
@@ -53,10 +22,39 @@ const int MAX_LOG_SIZE = 10;
 
 WebServer server(80);
 
-//LED ints
 std::deque<String> logData;
-int xCord = 0;
-int yCord = 0;
+float xCord = 0;
+float yCord = 0;
+float xCord_loaded = 0;
+float yCord_loaded = 0;
+
+void network_setup(void);
+void addLogEntry(const String& status);
+String generateLogHTML();
+void handleRoot();
+void handleUpdate();
+
+
+void network_setup(void){
+
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(ssid, password);
+
+  Serial.println("WiFi AP mode started");
+  Serial.print("SSID: ");
+  Serial.println(ssid);
+  Serial.print("Password: ");
+  Serial.println(password);
+  Serial.print("IP address: ");
+  Serial.println(WiFi.softAPIP());
+
+  server.on("/", handleRoot);
+  server.on("/update", handleUpdate);
+
+  server.begin();
+  Serial.println("HTTP server started");
+
+}
 
 void addLogEntry(const String& status) {
   // Remove the oldest entry if the log is full
@@ -104,8 +102,9 @@ void handleRoot() {
   html += "</form>";
   html += "<br>";
   html += "<h2>Current coordinates </h2>";
-  html += "<p>X: " + String(xCord) + "</p>";
-  html += "<p>Y: " + String(yCord) + "</p>"; 
+  html += "<p>X: " + String(ROOMBA.getXCoordinate()) + "</p>";
+  html += "<p>Y: " + String(ROOMBA.getYCoordinate()) + "</p>";
+  html += "<p>A: " + String(ROOMBA.getOrientation()) + "</p>"; 
   html += "<br>";
   html += "<br>";
   html += "<h2>Current Status </h2>";
@@ -120,17 +119,55 @@ void handleRoot() {
 
 void handleUpdate() {
   if (server.method() == HTTP_POST) {
-    xCord = server.arg("value1").toInt();
-    yCord = server.arg("value2").toInt();
-    server.send(200, "text/plain", "Values updated");
+    xCord = server.arg("value1").toFloat();
+    yCord = server.arg("value2").toFloat();
+  //   server.send(200, "text/plain", "Values updated");
     server.sendHeader("Refresh", "1; url=/");
-  } else {
-    server.send(400, "text/plain", "Invalid request");
+    handleRoot();
+  // } else {
+  //   server.send(400, "text/plain", "Invalid request");
+  // }
   }
 }
 
+Pwm pwm = Pwm();
+
+int previousMillis = 0;
+int currentMillis = 0;
+bool SERVO_CLOCKWISE = true;
+int SERVO_pos = 0;
+
+void core0_task(void *pvParameters);
+
+void setup_task1(void);
+void loop_task1(void);
+
+
+void core0_task(void *pvParameters)
+{
+  for(;;){
+      loop_task1();
+  }
+}
+
+void setup_task1(void)
+{
+  network_setup();
+}
+
+
+
+
+
+//LED ints
+
+
+
+
 void setup()
 {
+  set_IO_pins_low();
+  ROOMBA.setUpPins(L_Stepper_STEP_PIN, L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN);
   TaskHandle_t Task1;
   xTaskCreatePinnedToCore(core0_task, "Task 1", 100000, NULL, 1, &Task1, 0);
   // esp_task_wdt_delete(Task1);
@@ -141,140 +178,60 @@ void setup()
   ROOMBA.begin(KMH, 19.1525439, 1.5, 1000);
   Serial.begin(115200);
   setup_task1();
-  // ROOMBA.moveTo(0, 500);
-  // for (int pos = 0; pos <= 60; pos++)
-  // {                                 // go from 0-180 degrees
-  //   pwm.writeServo(SERVO_PIN, pos); // set the servo position (degrees)
-
-  //   delay(15);
-  // }
-
-  SERVO_pos = 60;
-  // ROOMBA.leftMotor.setupMoveInMillimeters(500);
-  // ROOMBA.rightMotor.setupMoveInMillimeters(500);
-  // ROOMBA.turn(2*PI);
-}
-
-  // pinMode(18, OUTPUT);
- //  pinMode(16, OUTPUT);
-  // while (1){
-  //   digitalWrite(14, HIGH);
-  //   digitalWrite(13, HIGH);
-  // }
-  
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(ssid, password);
-
-  Serial.println("WiFi AP mode started");
-  Serial.print("SSID: ");
-  Serial.println(ssid);
-  Serial.print("Password: ");
-  Serial.println(password);
-  Serial.print("IP address: ");
-  Serial.println(WiFi.softAPIP());
-
-  server.on("/", handleRoot);
-  server.on("/update", handleUpdate);
-
-  server.begin();
-  Serial.println("HTTP server started");
-
-
-  
-
-
-  S1.connectToPins(13,14);
-  S2.connectToPins(11,12);
-
-
-
-  //S2.setStepsPerRevolution(400);
-  S2.setStepsPerMillimeter(20.54647908);
-  //S1.setStepsPerRevolution(400);
-  S1.setStepsPerMillimeter(20.54647908);
-  
-  S1.setAccelerationInMillimetersPerSecondPerSecond(300);
-  S1.setSpeedInMillimetersPerSecond(1500);
-
-  
-  S2.setAccelerationInMillimetersPerSecondPerSecond(300);
-  S2.setSpeedInMillimetersPerSecond(1500);
-
-  S1.setupMoveInMillimeters(10000);
-  S2.setupMoveInMillimeters(10000);
-}
-
-  // // Send a response to the client
-
-  // client.print("TEST");
-
-  // // Close the connection
-  // client.stop();
-  // Serial.println("Client disconnected");
-  // // }else{
-  // //   return;
-  // // }
-  // //}
-
-///////////////////////////////////////////////////////////////////////////////////////////
-
-// Send data to server
-  client.println("Hello from Arduino!");
-
-void loop(){
-  server.handleClient();
-
-  if(S1.processMovement()){
-    S1.setupMoveInMillimeters(10000);
-  }
-  if(S2.processMovement()){
-    S2.setupMoveInMillimeters(10000);
-  }
-
-
-
-  // for LED printing
-  if (xCord == 1){
-    digitalWrite(18, HIGH);
-  }else {
-    digitalWrite(18, LOW);
-  }
-   if (yCord == 1){
-    digitalWrite(16, HIGH);
-  }else {
-    digitalWrite(16, LOW); 
-    
-  String status = "New status";  // Replace with your actual status string
-  addLogEntry(status);
-  
-  // Handle client requests
-  server.handleClient();
-  }
-   
 
 }
 
-void loop_task2()
+void loop()
 {
-
-  // loop_task1();
-  currentMillis = millis();
+   currentMillis = millis();
   if (currentMillis > previousMillis + 300)
   {
     previousMillis = currentMillis;
     Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
+  
   }
 
   // Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
   if (ROOMBA.processMovement())
   {
   }
+
 }
 
-void loop()
-{
-  loop_task2();
-}
+// Send data to server
+
+void loop_task1(){
+  server.handleClient();
+  handleRoot();
+
+  // for LED printing
+  // if (xCord == 1){
+  //   digitalWrite(18, HIGH);
+  // }else {
+  //   digitalWrite(18, LOW);
+  // }
+  //  if (yCord == 1){
+  //   digitalWrite(16, HIGH);
+  // }else {
+  //   digitalWrite(16, LOW); 
+  if (!(xCord == xCord_loaded && yCord == yCord_loaded)){
+    xCord_loaded = xCord;
+    yCord_loaded = yCord;
+    ROOMBA.moveTo(xCord, yCord);
+  }
+  
+    
+  String status = "New status";  // Replace with your actual status string
+  addLogEntry("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
+  
+  // Handle client requests
+  //server.handleClient();
+  }
+   
+
+
+
+
 
 // void loop(){
 

@@ -29,8 +29,9 @@ class EasyRobot
     
     SpeedyStepper leftMotor;
     SpeedyStepper rightMotor;
-    EasyRobot(int leftMotorStepPin, int leftMotorDirPin, int leftMotorEnablePin, int rightMotorStepPin, int rightMotorDirPin, int rightMotorEnablePin);
+    EasyRobot();
     void begin(unit speed_units, float stepsPerMillimeters, float speed, float Acceleration);
+    void setUpPins(int leftMotorStepPin, int leftMotorDirPin, int leftMotorEnablePin, int rightMotorStepPin, int rightMotorDirPin, int rightMotorEnablePin);
     void turn(float angle);
     void turn_deg(float angle);
     float getXCoordinate() const;
