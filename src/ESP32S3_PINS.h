@@ -3,8 +3,8 @@
 
 // Motor Pins
 // S2
-const int L_Stepper_STEP_PIN = 46;
-const int L_Stepper_DIR_PIN = 13;
+const int L_Stepper_STEP_PIN = 9;
+const int L_Stepper_DIR_PIN = 46;
 const int L_Stepper_ENABLE_PIN = 10;
 const int L_Stepper_ENCODER_PIN = 47;
 // S1
