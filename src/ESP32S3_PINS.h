@@ -3,15 +3,15 @@
 
 // Motor Pins
 // S2
-const int L_Stepper_STEP_PIN = 9;
-const int L_Stepper_DIR_PIN = 46;
-const int L_Stepper_ENABLE_PIN = 10;
-const int L_Stepper_ENCODER_PIN = 47;
+const int R_Stepper_STEP_PIN = 9;
+const int R_Stepper_DIR_PIN = 46;
+const int R_Stepper_ENABLE_PIN = 10;
+const int R_Stepper_ENCODER_PIN = 47;
 // S1
-const int R_Stepper_STEP_PIN = 7;
-const int R_Stepper_DIR_PIN = 6;
-const int R_Stepper_ENABLE_PIN = 15;
-const int R_Stepper_ENCODER_PIN = 21;
+const int L_Stepper_STEP_PIN = 7;
+const int L_Stepper_DIR_PIN = 6;
+const int L_Stepper_ENABLE_PIN = 15;
+const int L_Stepper_ENCODER_PIN = 21;
 
 // Servo
 const int SERVO_PIN = 16;

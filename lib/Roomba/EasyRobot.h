@@ -23,6 +23,8 @@ class EasyRobot
     std::queue<EasyRobot> move_queue;
 
     void updatePosition(float deltaX, float deltaY, float targetOrientation);
+    void updatePosition(float deltaX, float deltaY);
+    void updatePosition(float deltaOrientation);
     float calculateOrientation(float deltaX, float deltaY);
 
   public:
@@ -31,14 +33,17 @@ class EasyRobot
     SpeedyStepper rightMotor;
     EasyRobot();
     void begin(unit speed_units, float stepsPerMillimeters, float speed, float Acceleration);
+    void setPosition(float angle);
+    void setPosition(float xPos, float yPos);
+    void setPosition(float xPos, float yPos, float angle);
     void setUpPins(int leftMotorStepPin, int leftMotorDirPin, int leftMotorEnablePin, int rightMotorStepPin, int rightMotorDirPin, int rightMotorEnablePin);
-    void turn(float angle);
-    void turn_deg(float angle);
+    void setUpTurn(float angle);
+    void setUpTurnDeg(float angle);
     float getXCoordinate() const;
     float getYCoordinate() const;
     float getOrientation() const;
     void moveTo(float targetX, float targetY);
-    void moveForward(float distance);
+    void setupMoveForward(float distance);
     bool processMovement();
   
     void stop();

@@ -16,7 +16,7 @@ EasyRobot ROOMBA;
 #include <WebServer.h>
 #include <deque>
 
-const char* ssid = "Eraseinator_3000";
+const char* ssid = "Eraseinator 3000";
 const char* password = "NotPerry";
 const int MAX_LOG_SIZE = 10;
 
@@ -132,8 +132,12 @@ void handleUpdate() {
 
 Pwm pwm = Pwm();
 
+int loop1_previousMillis = 0;
+int loop1_currentMillis = 0;
+
 int previousMillis = 0;
 int currentMillis = 0;
+
 bool SERVO_CLOCKWISE = true;
 int SERVO_pos = 0;
 
@@ -167,20 +171,19 @@ void setup_task1(void)
 void setup()
 {
   set_IO_pins_low();
-  ROOMBA.setUpPins(L_Stepper_STEP_PIN, L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN);
+  ROOMBA.setUpPins(L_Stepper_STEP_PIN, !L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN);
   TaskHandle_t Task1;
   xTaskCreatePinnedToCore(core0_task, "Task 1", 100000, NULL, 1, &Task1, 0);
-  // esp_task_wdt_delete(Task1);
-  //  esp_task
 
-  // esp_cpu_clear_watchpoint(0);
-  // esp_task
   ROOMBA.begin(KMH, 19.1525439, 1.5, 1000);
+
   Serial.begin(115200);
   setup_task1();
-
+  ROOMBA.setPosition(0,0,0);  // Reset all positions to zero
 }
 
+
+//  Contorl Robot Movement
 void loop()
 {
    currentMillis = millis();
@@ -190,72 +193,23 @@ void loop()
     Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
   
   }
-
-  // Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
   if (ROOMBA.processMovement())
   {
+    ROOMBA.moveTo(xCord, yCord);
   }
 
 }
 
-// Send data to server
-
+//  Contorl Server
 void loop_task1(){
   server.handleClient();
+  server.sendHeader("Refresh", "1; url=/");
   handleRoot();
-
-  // for LED printing
-  // if (xCord == 1){
-  //   digitalWrite(18, HIGH);
-  // }else {
-  //   digitalWrite(18, LOW);
-  // }
-  //  if (yCord == 1){
-  //   digitalWrite(16, HIGH);
-  // }else {
-  //   digitalWrite(16, LOW); 
-  if (!(xCord == xCord_loaded && yCord == yCord_loaded)){
-    xCord_loaded = xCord;
-    yCord_loaded = yCord;
-    ROOMBA.moveTo(xCord, yCord);
+  loop1_currentMillis = millis();
+  if (loop1_currentMillis > loop1_previousMillis + 700)
+  {
+    loop1_previousMillis = loop1_currentMillis;
+    addLogEntry("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
   }
-  
-    
-  String status = "New status";  // Replace with your actual status string
-  addLogEntry("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
-  
-  // Handle client requests
-  //server.handleClient();
-  }
-   
 
-
-
-
-
-// void loop(){
-
-//   ROOMBA.processMovement();
-
-//   currentMillis = millis();
-
-//   if(currentMillis > previousMillis + 5){
-//     if(SERVO_CLOCKWISE){
-//       if(SERVO_pos <= 110){
-//         previousMillis = currentMillis;
-//         pwm.writeServo(SERVO_PIN, SERVO_pos);
-//         SERVO_pos++;
-//       }else{
-//         SERVO_CLOCKWISE = false;
-//       }
-//     }else{
-//       if(SERVO_pos >= 10){
-//         previousMillis = currentMillis;
-//         pwm.writeServo(SERVO_PIN, SERVO_pos);
-//         SERVO_pos--;
-//       }else{
-//         SERVO_CLOCKWISE = true;
-//       }
-//     }
-//   }
-// }
+}
