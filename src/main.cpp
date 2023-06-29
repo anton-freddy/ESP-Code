@@ -16,8 +16,8 @@ EasyRobot ROOMBA;
 #include <WebServer.h>
 #include <deque>
 
-const char* ssid = "Eraseinator 3000";
-const char* password = "NotPerry";
+const char *ssid = "Eraseinator 3000";
+const char *password = "NotPerry";
 const int MAX_LOG_SIZE = 10;
 
 WebServer server(80);
@@ -29,13 +29,13 @@ float xCord_loaded = 0;
 float yCord_loaded = 0;
 
 void network_setup(void);
-void addLogEntry(const String& status);
+void addLogEntry(const String &status);
 String generateLogHTML();
 void handleRoot();
 void handleUpdate();
 
-
-void network_setup(void){
+void network_setup(void)
+{
 
   WiFi.mode(WIFI_AP);
   WiFi.softAP(ssid, password);
@@ -53,12 +53,13 @@ void network_setup(void){
 
   server.begin();
   Serial.println("HTTP server started");
-
 }
 
-void addLogEntry(const String& status) {
+void addLogEntry(const String &status)
+{
   // Remove the oldest entry if the log is full
-  if (logData.size() >= MAX_LOG_SIZE) {
+  if (logData.size() >= MAX_LOG_SIZE)
+  {
     logData.pop_front();
   }
 
@@ -66,19 +67,22 @@ void addLogEntry(const String& status) {
   logData.push_back(status);
 }
 
-String generateLogHTML() {
+String generateLogHTML()
+{
   String html = "<div id='log'>";
-  
+
   // Iterate through the log entries and generate HTML for each entry
-  for (const auto& entry : logData) {
+  for (const auto &entry : logData)
+  {
     html += "<p>" + entry + "</p>";
   }
-  
+
   html += "</div>";
   return html;
 }
 
-void handleRoot() {
+void handleRoot()
+{
   String html = "<html><head>";
   html += "<style>";
   html += "body { background-color: #F7F3E3; font-family: Arial, sans-serif; margin: 0; padding: 0; }";
@@ -104,7 +108,7 @@ void handleRoot() {
   html += "<h2>Current coordinates </h2>";
   html += "<p>X: " + String(ROOMBA.getXCoordinate()) + "</p>";
   html += "<p>Y: " + String(ROOMBA.getYCoordinate()) + "</p>";
-  html += "<p>A: " + String(ROOMBA.getOrientation()) + "</p>"; 
+  html += "<p>A: " + String(ROOMBA.getOrientation()) + "</p>";
   html += "<br>";
   html += "<br>";
   html += "<h2>Current Status </h2>";
@@ -116,17 +120,18 @@ void handleRoot() {
   server.send(200, "text/html", html);
 }
 
-
-void handleUpdate() {
-  if (server.method() == HTTP_POST) {
+void handleUpdate()
+{
+  if (server.method() == HTTP_POST)
+  {
     xCord = server.arg("value1").toFloat();
     yCord = server.arg("value2").toFloat();
-  //   server.send(200, "text/plain", "Values updated");
+    //   server.send(200, "text/plain", "Values updated");
     server.sendHeader("Refresh", "1; url=/");
     handleRoot();
-  // } else {
-  //   server.send(400, "text/plain", "Invalid request");
-  // }
+    // } else {
+    //   server.send(400, "text/plain", "Invalid request");
+    // }
   }
 }
 
@@ -146,11 +151,11 @@ void core0_task(void *pvParameters);
 void setup_task1(void);
 void loop_task1(void);
 
-
 void core0_task(void *pvParameters)
 {
-  for(;;){
-      loop_task1();
+  for (;;)
+  {
+    loop_task1();
   }
 }
 
@@ -159,49 +164,100 @@ void setup_task1(void)
   network_setup();
 }
 
-
-
-
-
-//LED ints
-
-
-
+// LED ints
 
 void setup()
 {
   set_IO_pins_low();
   ROOMBA.setUpPins(L_Stepper_STEP_PIN, !L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN);
-  TaskHandle_t Task1;
-  xTaskCreatePinnedToCore(core0_task, "Task 1", 100000, NULL, 1, &Task1, 0);
+  // TaskHandle_t Task1;
+  // xTaskCreatePinnedToCore(core0_task, "Task 1", 100000, NULL, 1, &Task1, 0);
 
   ROOMBA.begin(KMH, 19.1525439, 1.5, 1000);
 
   Serial.begin(115200);
   setup_task1();
-  ROOMBA.setPosition(0,0,0);  // Reset all positions to zero
+  ROOMBA.setPosition(0, 0, 0); // Reset all positions to zero
 }
-
 
 //  Contorl Robot Movement
 void loop()
 {
-   currentMillis = millis();
+  delay(2000);
+  currentMillis = millis();
   if (currentMillis > previousMillis + 300)
   {
     previousMillis = currentMillis;
     Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
-  
   }
   if (ROOMBA.processMovement())
   {
-    ROOMBA.moveTo(xCord, yCord);
+    ROOMBA.moveTo(500, 1000);
+    while (!ROOMBA.processMovement())
+    {
+      currentMillis = millis();
+      if (currentMillis > previousMillis + 300)
+      {
+        previousMillis = currentMillis;
+        Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
+      }
+    }
+    ROOMBA.moveTo(1500, 1000);
+    while (!ROOMBA.processMovement())
+    {
+      currentMillis = millis();
+      if (currentMillis > previousMillis + 300)
+      {
+        previousMillis = currentMillis;
+        Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
+      }
+    }
+    ROOMBA.moveTo(2000, 0);
+    while (!ROOMBA.processMovement())
+    {
+      currentMillis = millis();
+      if (currentMillis > previousMillis + 300)
+      {
+        previousMillis = currentMillis;
+        Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
+      }
+    }
+    ROOMBA.moveTo(1500, -1000);
+    while (!ROOMBA.processMovement())
+    {
+      currentMillis = millis();
+      if (currentMillis > previousMillis + 300)
+      {
+        previousMillis = currentMillis;
+        Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
+      }
+    }
+    ROOMBA.moveTo(500, -1000);
+    while (!ROOMBA.processMovement())
+    {
+      currentMillis = millis();
+      if (currentMillis > previousMillis + 300)
+      {
+        previousMillis = currentMillis;
+        Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
+      }
+    }
+    ROOMBA.moveTo(0, 0);
+    while (!ROOMBA.processMovement())
+    {
+      currentMillis = millis();
+      if (currentMillis > previousMillis + 300)
+      {
+        previousMillis = currentMillis;
+        Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
+      }
+    }
   }
-
 }
 
 //  Contorl Server
-void loop_task1(){
+void loop_task1()
+{
   server.handleClient();
   server.sendHeader("Refresh", "1; url=/");
   handleRoot();
@@ -211,5 +267,4 @@ void loop_task1(){
     loop1_previousMillis = loop1_currentMillis;
     addLogEntry("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.getOrientation());
   }
-
 }

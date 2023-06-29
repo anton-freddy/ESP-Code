@@ -16,7 +16,12 @@ class EasyRobot
     bool L_MOVE_DONE;
     bool R_MOVE_DONE;
     bool ROTATE_MOVE;
-    bool STRAIGHT_MOVE;
+
+    // Process Movement Variables
+    float previous_cord_LS;
+    float previous_cord_RS;
+    float current_cord_LS;
+    float current_cord_RS;
 
     float nextMoveOrientation;
     float nextMoveDiagDistance;
@@ -42,9 +47,12 @@ class EasyRobot
     float getXCoordinate() const;
     float getYCoordinate() const;
     float getOrientation() const;
+    float calc_delta_Y(float straight_line_dist, float orientation);
+    float calc_delta_X(float straight_line_dist, float orientation);
     void moveTo(float targetX, float targetY);
     void setupMoveForward(float distance);
     bool processMovement();
+    bool motionComplete();
   
     void stop();
 
