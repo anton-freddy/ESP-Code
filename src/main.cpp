@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <Esp.h>
-#include <SpeedyStepperCustom.h>
 #include <EasyRobot.h>
 #include <ESP32S3_PINS.h>
 #include <pwmWrite.h>
@@ -200,7 +199,7 @@ void loop()
       currentMillis = millis();
       if (currentMillis > previousMillis + 300)
       {
-        ROOMBA.setPosition(0,1000);
+        //ROOMBA.setPosition(0,1000);
         previousMillis = currentMillis;
         Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.toDeg(ROOMBA.getOrientation()));
       }
@@ -212,7 +211,7 @@ void loop()
       currentMillis = millis();
       if (currentMillis > previousMillis + 300)
       {
-        ROOMBA.setPosition(1000,1000);
+        //ROOMBA.setPosition(1000,1000);
         previousMillis = currentMillis;
         Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.toDeg(ROOMBA.getOrientation()));
       }
@@ -224,7 +223,7 @@ void loop()
       currentMillis = millis();
       if (currentMillis > previousMillis + 300)
       {
-        ROOMBA.setPosition(1000,0);
+        //ROOMBA.setPosition(1000,0);
         previousMillis = currentMillis;
         Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.toDeg(ROOMBA.getOrientation()));
       }
@@ -236,7 +235,7 @@ void loop()
       currentMillis = millis();
       if (currentMillis > previousMillis + 300)
       {
-        ROOMBA.setPosition(0,0);
+        //ROOMBA.setPosition(0,0);
         previousMillis = currentMillis;
         Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.toDeg(ROOMBA.getOrientation()));
       }

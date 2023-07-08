@@ -28,7 +28,7 @@
 // ***********************************************************************
 
 
-#include <FlexyStepper.h>
+#include <FlexyStepperCustom.h>
 
 
 //

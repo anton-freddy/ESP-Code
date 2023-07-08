@@ -15,13 +15,16 @@ class EasyRobot
     float orientation;
     bool L_MOVE_DONE;
     bool R_MOVE_DONE;
-    bool ROTATE_MOVE;
+    bool ROT_MOVE;
+    bool STR_MOVE;
 
     // Process Movement Variables
     float previous_cord_LS;
     float previous_cord_RS;
     float current_cord_LS;
     float current_cord_RS;
+    float target_cord_LS;
+    float target_cord_RS;
 
     float nextMoveOrientation;
     float nextMoveDiagDistance;
@@ -34,7 +37,7 @@ class EasyRobot
 
 
   public:
-    
+
     FlexyStepper leftMotor;
     FlexyStepper rightMotor;
     EasyRobot();

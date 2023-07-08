@@ -53,7 +53,7 @@ class FlexyStepper
     void setStepsPerMillimeter(float motorStepPerMillimeter);
     float getCurrentPositionInMillimeters();
     void setCurrentPositionInMillimeters(float currentPositionInMillimeters);
-    void setCurrentPositionInMillimeter(float currentPositionInMillimeter);
+    //void setCurrentPositionInMillimeter(float currentPositionInMillimeter);
     void setSpeedInMillimetersPerSecond(float speedInMillimetersPerSecond);
     void setAccelerationInMillimetersPerSecondPerSecond(float accelerationInMillimetersPerSecondPerSecond);
     bool moveToHomeInMillimeters(long directionTowardHome, float speedInMillimetersPerSecond, long maxDistanceToMoveInMillimeters, int homeLimitSwitchPin);
