@@ -177,69 +177,25 @@ void setup()
   Serial.begin(115200);
   //setup_task1();
   ROOMBA.setPosition(0, 0, 0); // Reset all positions to zero
-  ROOMBA.moveTo(0,0);
+  ROOMBA.add_move(0,1000);
+  ROOMBA.add_move(1000,1000);
+  ROOMBA.add_move(1000,0);
+  ROOMBA.add_move(0,0);
+  delay(4000);
 }
 
 //  Contorl Robot Movement
 void loop()
 {
-  delay(2000);
   currentMillis = millis();
   if (currentMillis > previousMillis + 300)
   {
     previousMillis = currentMillis;
     Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.toDeg(ROOMBA.getOrientation()));
   }
-  if (ROOMBA.motionComplete())
+  if (!ROOMBA.motionComplete())
   {
-    ROOMBA.moveTo(0, 1000);
-    while (!ROOMBA.motionComplete())
-    {
-      ROOMBA.processMovement();
-      currentMillis = millis();
-      if (currentMillis > previousMillis + 300)
-      {
-        //ROOMBA.setPosition(0,1000);
-        previousMillis = currentMillis;
-        Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.toDeg(ROOMBA.getOrientation()));
-      }
-    }
-    ROOMBA.moveTo(1000, 1000);
-    while (!ROOMBA.motionComplete())
-    {
-      ROOMBA.processMovement();
-      currentMillis = millis();
-      if (currentMillis > previousMillis + 300)
-      {
-        //ROOMBA.setPosition(1000,1000);
-        previousMillis = currentMillis;
-        Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.toDeg(ROOMBA.getOrientation()));
-      }
-    }
-    ROOMBA.moveTo(1000, 0);
-    while (!ROOMBA.motionComplete())
-    {
-      ROOMBA.processMovement();
-      currentMillis = millis();
-      if (currentMillis > previousMillis + 300)
-      {
-        //ROOMBA.setPosition(1000,0);
-        previousMillis = currentMillis;
-        Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.toDeg(ROOMBA.getOrientation()));
-      }
-    }
-    ROOMBA.moveTo(0, 0);
-    while (!ROOMBA.motionComplete())
-    {
-      ROOMBA.processMovement();
-      currentMillis = millis();
-      if (currentMillis > previousMillis + 300)
-      {
-        //ROOMBA.setPosition(0,0);
-        previousMillis = currentMillis;
-        Serial.println("X: " + (String)ROOMBA.getXCoordinate() + "  Y: " + (String)ROOMBA.getYCoordinate() + "  A: " + (String)ROOMBA.toDeg(ROOMBA.getOrientation()));
-      }
-    }
+    ROOMBA.processMovement();
   }
 }
 

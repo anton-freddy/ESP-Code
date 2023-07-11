@@ -1,74 +1,131 @@
 #include <Arduino.h>
 #include <FlexyStepperCustom.h>
 #include <math.h>
-#include <queue>
+#include <ArduinoQueue.h>
 
-enum unit { KMH = 1, MMS = 2 };
+enum unit
+{
+  KMH = 1,
+  MMS = 2
+};
+
+struct pos
+{
+  long x_pos;
+  long y_pos;
+  double a_pos;
+};
+
+struct motor_move
+{
+  long LeftMotor;
+  long RightMotor;
+};
+
+struct move
+{
+  long target_x_pos;
+  long traget_y_pos;
+  double target_a_pos;
+  bool is_rotate;
+
+  move()
+  {
+    target_a_pos = 0;
+    target_x_pos = 0;
+    traget_y_pos = 0;
+    is_rotate = false;
+  }
+
+  move(long x, long y)
+  {
+    target_a_pos = 0;
+    target_x_pos = x;
+    traget_y_pos = y;
+    is_rotate = false;
+  }
+  move(double a)
+  {
+    target_a_pos = a;
+    target_x_pos = 0;
+    traget_y_pos = 0;
+    is_rotate = true;
+  }
+};
 
 
 
 class EasyRobot
 {
-  private:
-    float xCoordinate;
-    float yCoordinate;
-    float orientation;
-    bool L_MOVE_DONE;
-    bool R_MOVE_DONE;
-    bool ROT_MOVE;
-    bool STR_MOVE;
 
-    // Process Movement Variables
-    float previous_cord_LS;
-    float previous_cord_RS;
-    float current_cord_LS;
-    float current_cord_RS;
-    float target_cord_LS;
-    float target_cord_RS;
+private:
+  const float rotationConstant = 171.931; // 158.3;//160.49877; // Must be adjusted based on wheel distance and mounting points
+  long x_pos;
+  long y_pos;
+  double a_pos;
+  bool L_MOVE_DONE;
+  bool R_MOVE_DONE;
+  bool ROT_MOVE;
+  bool STR_MOVE;
 
-    float nextMoveOrientation;
-    float nextMoveDiagDistance;
-    std::queue<EasyRobot> move_queue;
+  // Process Movement Variables
+  long previous_cord_LS;
+  long previous_cord_RS;
+  long current_cord_LS;
+  long current_cord_RS;
+  long target_cord_LS;
+  long target_cord_RS;
 
-    void updatePosition(float deltaX, float deltaY, float targetOrientation);
-    void updatePosition(float deltaX, float deltaY);
-    void updatePosition(float deltaOrientation);
-    float calculateOrientation(float deltaX, float deltaY);
+  void updatePosition(long deltaX, long deltaY, double targetOrientation);
+  void updatePosition(long deltaX, long deltaY);
+  void updatePosition(double deltaOrientation);
 
+  double calc_orientation(long target_X, long target_y);
+  long calc_delta_Y(long straight_line_dist);
+  long calc_delta_X(long straight_line_dist);
+  long calc_diagonal_distance(long target_x, long target_y);
 
-  public:
+  void load_move(void);
 
-    FlexyStepper leftMotor;
-    FlexyStepper rightMotor;
-    EasyRobot();
-    void begin(unit speed_units, float stepsPerMillimeters, float speed, float Acceleration);
-    void setPosition(float angle);
-    void setPosition(float xPos, float yPos);
-    void setPosition(float xPos, float yPos, float angle);
-    void setUpPins(int leftMotorStepPin, int leftMotorDirPin, int leftMotorEnablePin, int rightMotorStepPin, int rightMotorDirPin, int rightMotorEnablePin);
-    void setUpTurn(float TargetOrientation);
-    void setUpTurnDeg(float TargetOrientation);
-    float getXCoordinate() const;
-    float getYCoordinate() const;
-    float getOrientation() const;
-    float calc_delta_Y(float straight_line_dist);
-    float calc_delta_X(float straight_line_dist);
-    void moveTo(float targetX, float targetY);
-    void setupMoveForward(float distance);
-    bool processMovement();
-    bool motionComplete();
+  void setSpeedInKMH(float speed);
+  void setSpeedInMMS(float speed);
+  void setAccelerationInKMHH(float speed);
+  void setAccelerationInMMSS(float speed);
 
-    float toDeg(float rad);
-    float toRad(float deg);
-  
-    void stop();
+  void sendError(String MSG);
 
-    void add_move(float targetX, float targetY);
-    void add_rot_move(float deltaTheta);
+public:
+  FlexyStepper leftMotor;
+  FlexyStepper rightMotor;
 
-    void setSpeedInKMH(float speed);
-    void setSpeedInMMS(float speed);
-    void setAccelerationInKMHH(float speed);
-    void setAccelerationInMMSS(float speed);
+  EasyRobot();
 
+  void begin(unit speed_units, float stepsPerMillimeters, float speed, float Acceleration);
+  void setUpPins(int leftMotorStepPin, int leftMotorDirPin, int leftMotorEnablePin, int rightMotorStepPin, int rightMotorDirPin, int rightMotorEnablePin);
+
+  void setPosition(double angle);
+  void setPosition(long xPos, long yPos);
+  void setPosition(long xPos, long yPos, double angle);
+
+  void setUpMove(long target_x, long target_y);
+  void setUpTurn(double TargetOrientation);
+  void setUpTurnDeg(double TargetOrientation);
+  long getXCoordinate() const;
+  long getYCoordinate() const;
+  double getOrientation() const;
+
+  void moveTo(long targetX, long targetY);
+  void setupMoveForward(long distance);
+  bool processMovement();
+  bool motionComplete();
+
+  float toDeg(double rad);
+  float toRad(double deg);
+
+  void stop();
+
+  bool add_move(long targetX, long targetY);
+  bool add_move(double targetA);
 };
+
+
