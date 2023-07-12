@@ -9,6 +9,41 @@ EasyRobot::EasyRobot()
   current_cord_RS = 0;
 }
 
+//--  Stepper Movement -----------------------------------------
+
+bool EasyRobot::moveSteppers()
+{
+  L_step_time = 1000 / L_CurrentSpeed;
+  if (abs(L_CurrentSteps) < abs(L_TargetSteps))
+  {
+    long current_time = millis();
+    if ((current_time - L_previous_time) >= L_step_time)
+    {
+      L_previous_time = current_time;
+      digitalWrite(L_S_pin, HIGH);
+      if(L_direction == 1){
+        L_CurrentSteps++;
+      }else if (L_direction == -1){
+        L_CurrentSteps--;
+      }
+      
+    }
+    digitalWrite(L_S_pin, LOW);
+  }
+}
+
+void EasyRobot::L_setSpeed_SPS(long SPS)
+{
+  L_TargetSpeed = SPS;
+}
+void EasyRobot::R_setSpeed_SPS(long SPS)
+{
+  R_TargetSpeed = SPS;
+}
+void EasyRobot::setAcceleration_SPSPS(long SPSPS)
+{
+}
+
 //--  Private Functions ----------------------------------------
 
 // Updates the position of the robot, values passed should be delta values, NOT target values
@@ -17,7 +52,7 @@ void EasyRobot::updatePosition(long deltaX, long deltaY, double deltaOrientation
   x_pos += deltaX;
   y_pos += deltaY;
   a_pos += deltaOrientation;
-    if (a_pos < 0)
+  if (a_pos < 0)
   {
     a_pos = a_pos + (2 * PI);
   }

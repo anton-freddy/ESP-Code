@@ -59,6 +59,33 @@ class EasyRobot
 {
 
 private:
+  //  Stepper Varibales
+  byte L_E_pin;
+  byte L_S_pin;
+  byte L_D_pin;
+
+  byte R_E_pin;
+  byte R_S_pin;
+  byte R_D_pin;
+
+  long acceleration;
+
+  long L_CurrentSteps;
+  long L_TargetSteps;
+  long L_direction;
+  long L_CurrentSpeed;
+  long L_TargetSpeed;
+  long L_previous_time;
+  long L_step_time;
+
+  long R_CurrentSteps;
+  long R_TargetSteps;
+  long R_direction;
+  long R_CurrentSpeed;
+  long R_TargetSpeed;
+  long R_previous_time;
+
+
   const float rotationConstant = 171.931; // 158.3;//160.49877; // Must be adjusted based on wheel distance and mounting points
   long x_pos;
   long y_pos;
@@ -75,6 +102,11 @@ private:
   long current_cord_RS;
   long target_cord_LS;
   long target_cord_RS;
+
+  // Stepper Functions
+  void L_setSpeed_SPS(long SPS);
+  void R_setSpeed_SPS(long SPS);
+  void setAcceleration_SPSPS(long SPSPS);
 
   void updatePosition(long deltaX, long deltaY, double targetOrientation);
   void updatePosition(long deltaX, long deltaY);
@@ -95,6 +127,9 @@ private:
   void sendError(String MSG);
 
 public:
+
+  bool moveSteppers();
+
   FlexyStepper leftMotor;
   FlexyStepper rightMotor;
 
