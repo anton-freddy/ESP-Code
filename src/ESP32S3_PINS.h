@@ -1,5 +1,7 @@
 // This Header is used to set the pin numbers
-
+const float WHEEL_CIRCUMFERENCE = 157.1;
+const float WHEEL_DISTANCE = 281.6; // OUTER: 311.6mm INNER: 281.6mm 
+const int STEPS_PER_REV = 3200;
 
 // Motor Pins
 // S2

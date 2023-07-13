@@ -8,7 +8,7 @@
 #include <iostream>
 #include "esp_task_wdt.h"
 
-EasyRobot ROOMBA;
+EasyRobot ROOMBA(STEPS_PER_REV,WHEEL_CIRCUMFERENCE, WHEEL_DISTANCE);
 
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -172,21 +172,25 @@ void setup()
   // TaskHandle_t Task1;
   // xTaskCreatePinnedToCore(core0_task, "Task 1", 100000, NULL, 1, &Task1, 0);
 
-  ROOMBA.begin(KMH, 19.1525439, 1.5, 1000);
+  ROOMBA.begin(KMH, 1.5, 1000); //19.1525439
 
   Serial.begin(115200);
   //setup_task1();
   ROOMBA.setPosition(0, 0, 0); // Reset all positions to zero
-  ROOMBA.add_move(0,1000);
-  ROOMBA.add_move(1000,1000);
-  ROOMBA.add_move(1000,0);
-  ROOMBA.add_move(0,0);
+  // ROOMBA.add_move(0,1000);
+  // ROOMBA.add_move(1000,1000);
+  // ROOMBA.add_move(1000,0);
+  // ROOMBA.add_move(0,0);
+  ROOMBA.setupMoveForward(1000);
+  //ROOMBA.moveTo(1000,1000);
   delay(4000);
+  //ROOMBA.setupMoveForward(1000);
 }
 
 //  Contorl Robot Movement
 void loop()
 {
+ // ROOMBA.moveSteppers();
   currentMillis = millis();
   if (currentMillis > previousMillis + 300)
   {

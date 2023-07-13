@@ -3,17 +3,20 @@
 ArduinoQueue<move> move_q(500);
 
 //--  Constructor
-EasyRobot::EasyRobot()
+EasyRobot::EasyRobot(int steps_per_revolution, float wheel_circumfrence, float wheel_distance)
 {
-  current_cord_LS = 0;
-  current_cord_RS = 0;
+  steps_per_rev = steps_per_revolution;
+  wheel_circumfrence_mm = wheel_circumfrence;
+  wheel_distance_mm = wheel_distance;
+  steps_per_mm = steps_per_rev / wheel_circumfrence_mm;
 }
 
 //--  Stepper Movement -----------------------------------------
 
 bool EasyRobot::moveSteppers()
 {
-  L_step_time = 1000 / L_CurrentSpeed;
+  L_step_time = 1000 / L_TargetSpeed;
+  R_step_time = 1000 / R_TargetSpeed;
   if (abs(L_CurrentSteps) < abs(L_TargetSteps))
   {
     long current_time = millis();
@@ -21,33 +24,125 @@ bool EasyRobot::moveSteppers()
     {
       L_previous_time = current_time;
       digitalWrite(L_S_pin, HIGH);
-      if(L_direction == 1){
+      if (L_direction == 1)
+      {
         L_CurrentSteps++;
-      }else if (L_direction == -1){
+      }
+      else if (L_direction == -1)
+      {
         L_CurrentSteps--;
       }
-      
     }
     digitalWrite(L_S_pin, LOW);
+  }
+
+  if (abs(R_CurrentSteps) < abs(R_TargetSteps))
+  {
+    long current_time = millis();
+    if ((current_time - R_previous_time) >= R_step_time)
+    {
+      R_previous_time = current_time;
+      digitalWrite(R_S_pin, HIGH);
+      if (R_direction == 1)
+      {
+        R_CurrentSteps++;
+      }
+      else if (R_direction == -1)
+      {
+        R_CurrentSteps--;
+      }
+    }
+    digitalWrite(R_S_pin, LOW);
+  }
+  if (L_CurrentSteps == L_TargetSteps && R_CurrentSteps == R_TargetSteps)
+  {
+    return true;
+  }
+  else
+  {
+    return false;
   }
 }
 
 void EasyRobot::L_setSpeed_SPS(long SPS)
 {
   L_TargetSpeed = SPS;
+  L_CurrentSpeed = L_TargetSpeed;
 }
 void EasyRobot::R_setSpeed_SPS(long SPS)
 {
   R_TargetSpeed = SPS;
+  R_CurrentSpeed = R_TargetSpeed;
+}
+void EasyRobot::L_setSpeed_MMPS(float MMPS)
+{
+  L_setSpeed_SPS(MMPS * steps_per_mm);
+}
+void EasyRobot::R_setSpeed_MMPS(float MMPS)
+{
+  R_setSpeed_SPS(MMPS * steps_per_mm);
 }
 void EasyRobot::setAcceleration_SPSPS(long SPSPS)
 {
 }
 
+float EasyRobot::L_getCurrentPos_MM(void)
+{
+  return L_CurrentSteps / steps_per_mm;
+}
+float EasyRobot::L_getCurrentSpeed_MMS(void)
+{
+  return L_CurrentSpeed / steps_per_mm;
+}
+float EasyRobot::R_getCurrentPos_MM(void)
+{
+  return R_CurrentSteps / steps_per_mm;
+}
+float EasyRobot::R_getCurrentSpeed_MMS(void)
+{
+  return R_CurrentSpeed / steps_per_mm;
+}
+
+void EasyRobot::L_setTarget_MM(float Target_MM)
+{
+  L_setTarget_STEP(Target_MM * steps_per_mm);
+}
+void EasyRobot::L_setTarget_STEP(long Target_STEP)
+{
+  L_TargetSteps = Target_STEP;
+  if (L_TargetSteps < L_CurrentSteps)
+  {
+    L_direction = -1;
+    digitalWrite(L_D_pin, LOW);
+  }
+  else
+  {
+    L_direction = 1;
+    digitalWrite(L_D_pin, HIGH);
+  }
+}
+void EasyRobot::R_setTarget_MM(float Target_MM)
+{
+  R_setTarget_STEP(Target_MM * steps_per_mm);
+}
+void EasyRobot::R_setTarget_STEP(long Target_STEP)
+{
+  R_TargetSteps = Target_STEP;
+  if (R_TargetSteps < R_CurrentSteps)
+  {
+    R_direction = -1;
+    digitalWrite(R_D_pin, LOW);
+  }
+  else
+  {
+    R_direction = 1;
+    digitalWrite(R_D_pin, HIGH);
+  }
+}
 //--  Private Functions ----------------------------------------
 
 // Updates the position of the robot, values passed should be delta values, NOT target values
-void EasyRobot::updatePosition(long deltaX, long deltaY, double deltaOrientation)
+void EasyRobot::updatePosition(float deltaX, float deltaY, float deltaOrientation)
 {
   x_pos += deltaX;
   y_pos += deltaY;
@@ -67,14 +162,14 @@ void EasyRobot::updatePosition(long deltaX, long deltaY, double deltaOrientation
 }
 
 // Updates the position of the robot, values passed should be delta values, NOT target values
-void EasyRobot::updatePosition(long deltaX, long deltaY)
+void EasyRobot::updatePosition(float deltaX, float deltaY)
 {
   x_pos += deltaX;
   y_pos += deltaY;
 }
 
 // Updates the position of the robot, values passed should be delta values, NOT target values
-void EasyRobot::updatePosition(double deltaOrientation)
+void EasyRobot::updatePosition(float deltaOrientation)
 {
   a_pos += deltaOrientation;
   if (a_pos < 0)
@@ -92,12 +187,12 @@ void EasyRobot::updatePosition(double deltaOrientation)
 }
 
 // Returns the target orinenation of the robot based on the change in X and Y
-double EasyRobot::calc_orientation(long target_x, long target_y)
+float EasyRobot::calc_orientation(float target_x, float target_y)
 {
-  long deltaX = target_x - x_pos;
-  long deltaY = target_y - y_pos;
+  float deltaX = target_x - x_pos;
+  float deltaY = target_y - y_pos;
   // return atan2f(deltaY, deltaX);
-  double target_orientation = 0;
+  float target_orientation = 0;
   if (deltaX == 0)
   {
     if (deltaY > 0)
@@ -124,12 +219,10 @@ double EasyRobot::calc_orientation(long target_x, long target_y)
   {
     if (deltaY > 0)
     {
-      Serial.println("QUADRANT 1");
       target_orientation = atan(deltaX / deltaY);
     }
     else if (deltaY < 0)
     {
-      Serial.println("QUADRANT 2");
       target_orientation = 0.5 * PI + atan(abs(deltaY / deltaX));
     }
     else
@@ -141,12 +234,10 @@ double EasyRobot::calc_orientation(long target_x, long target_y)
   {
     if (deltaY < 0)
     {
-      Serial.println("QUADRANT 3");
       target_orientation = PI + atan(abs(deltaX / deltaY));
     }
     else if (deltaY > 0)
     {
-      Serial.println("QUADRANT 4");
       target_orientation = 1.5 * PI + atan(abs(deltaY / deltaX));
     }
     else
@@ -180,7 +271,7 @@ double EasyRobot::calc_orientation(long target_x, long target_y)
 }
 
 // Returns the change in Ypos (deltaY), based on the strightline distance covered and the current a_pos of the robot
-long EasyRobot::calc_delta_Y(long straight_line_dist)
+float EasyRobot::calc_delta_Y(float straight_line_dist)
 {
   if (a_pos == 0)
   {
@@ -222,7 +313,7 @@ long EasyRobot::calc_delta_Y(long straight_line_dist)
 }
 
 // Returns the change in Xpos (deltaX), based on the strightline distance covered and the current a_pos of the robot
-long EasyRobot::calc_delta_X(long straight_line_dist)
+float EasyRobot::calc_delta_X(float straight_line_dist)
 {
   if (a_pos == 0)
   {
@@ -264,11 +355,11 @@ long EasyRobot::calc_delta_X(long straight_line_dist)
 }
 
 // Returns the diagonal distance the robot needs to cover based on the target XY pos, current orientation
-long EasyRobot::calc_diagonal_distance(long target_x, long target_y)
+float EasyRobot::calc_diagonal_distance(float target_x, float target_y)
 {
-  long deltaX = target_x - x_pos;
-  long deltaY = target_y - y_pos;
-  long distance_diagonal;
+  float deltaX = target_x - x_pos;
+  float deltaY = target_y - y_pos;
+  float distance_diagonal;
 
   if (deltaX == 0)
   {
@@ -325,9 +416,8 @@ void EasyRobot::setSpeedInKMH(float speed)
 // Sets the speed of the robot in mm/s, !!NOTE!! you must set the steps per millimeter before setting the speed
 void EasyRobot::setSpeedInMMS(float speed)
 {
-
-  leftMotor.setSpeedInMillimetersPerSecond(speed);
-  rightMotor.setSpeedInMillimetersPerSecond(speed);
+  L_TargetSpeed = speed * steps_per_mm;
+  R_TargetSpeed = speed * steps_per_mm;
 }
 
 // Sets the speed of the robot in KM/h, !!NOTE!! you must set the steps per millimeter before setting the speed
@@ -352,28 +442,24 @@ void EasyRobot::sendError(String MSG)
 //--  Public Functions ----------------------------------------
 
 // Initialize the robot, for unit pick either KMH or MMS
-void EasyRobot::begin(unit speed_units, float stepsPerMillimeters, float speed, float Acceleration)
+void EasyRobot::begin(unit speed_units, float speed, float Acceleration)
 {
-
-  leftMotor.setStepsPerMillimeter(stepsPerMillimeters);
-  rightMotor.setStepsPerMillimeter(stepsPerMillimeters);
 
   if (speed_units == 1)
   {
     setSpeedInKMH(speed);
-    setAccelerationInKMHH(Acceleration);
+    // setAccelerationInKMHH(Acceleration);
   }
   else
   {
     setSpeedInMMS(speed);
-    setAccelerationInMMSS(Acceleration);
+    // setAccelerationInMMSS(Acceleration);
   }
+  L_CurrentSteps = 0;
+  R_CurrentSteps = 0;
+  L_TargetSteps = 0;
+  R_TargetSteps = 0;
 
-  leftMotor.setCurrentPositionInMillimeters(0L);
-  rightMotor.setCurrentPositionInMillimeters(0L);
-
-  leftMotor.enableStepper();
-  rightMotor.enableStepper();
 
   x_pos = 0;
   y_pos = 0;
@@ -389,27 +475,44 @@ void EasyRobot::begin(unit speed_units, float stepsPerMillimeters, float speed, 
   target_cord_LS = 0;
   target_cord_RS = 0;
 }
-void EasyRobot::setUpPins(int leftMotorStepPin, int leftMotorDirPin, int leftMotorEnablePin, int rightMotorStepPin, int rightMotorDirPin, int rightMotorEnablePin)
+void EasyRobot::setUpPins(byte leftMotorStepPin, byte leftMotorDirPin, byte leftMotorEnablePin, byte rightMotorStepPin, byte rightMotorDirPin, byte rightMotorEnablePin)
 {
-  leftMotor.connectToPins(leftMotorStepPin, leftMotorDirPin, leftMotorEnablePin);
-  rightMotor.connectToPins(rightMotorStepPin, rightMotorDirPin, rightMotorEnablePin);
+  L_S_pin = leftMotorStepPin;
+  L_D_pin = leftMotorDirPin;
+  L_E_pin = leftMotorEnablePin;
+  pinMode(L_S_pin, OUTPUT);
+  pinMode(L_D_pin, OUTPUT);
+  pinMode(L_E_pin, OUTPUT);
+  digitalWrite(L_S_pin, LOW);
+  digitalWrite(L_D_pin, LOW);
+  digitalWrite(L_E_pin, LOW);
+
+  R_S_pin = rightMotorStepPin;
+  R_D_pin = rightMotorDirPin;
+  R_E_pin = rightMotorEnablePin;
+  pinMode(R_S_pin, OUTPUT);
+  pinMode(R_D_pin, OUTPUT);
+  pinMode(R_E_pin, OUTPUT);
+  digitalWrite(R_S_pin, LOW);
+  digitalWrite(R_D_pin, LOW);
+  digitalWrite(R_E_pin, LOW);
 }
 
 // Overide the position stored by teh robot
-void EasyRobot::setPosition(double angle)
+void EasyRobot::setPosition(float angle)
 {
   a_pos = angle;
 }
 
 // Overide the position stored by teh robot
-void EasyRobot::setPosition(long xPos, long yPos)
+void EasyRobot::setPosition(float xPos, float yPos)
 {
   x_pos = xPos;
   y_pos = yPos;
 }
 
 // Overide the position stored by teh robot
-void EasyRobot::setPosition(long xPos, long yPos, double angle)
+void EasyRobot::setPosition(float xPos, float yPos, float angle)
 {
   x_pos = xPos;
   y_pos = yPos;
@@ -417,29 +520,29 @@ void EasyRobot::setPosition(long xPos, long yPos, double angle)
 }
 
 // Get the current X coordinate
-long EasyRobot::getXCoordinate() const
+float EasyRobot::getXCoordinate() const
 {
   return x_pos;
 }
 
 // Get the current Y coordinate
-long EasyRobot::getYCoordinate() const
+float EasyRobot::getYCoordinate() const
 {
   return y_pos;
 }
 
 // Get the current a_pos (in radians)
-double EasyRobot::getOrientation() const
+float EasyRobot::getOrientation() const
 {
   return a_pos;
 }
 
 // Move the robot directly to a target position (X, Y)
-void EasyRobot::moveTo(long targetX, long targetY)
+void EasyRobot::moveTo(float targetX, float targetY)
 {
 
-  long deltaX = targetX - x_pos;
-  long deltaY = targetY - y_pos;
+  float deltaX = targetX - x_pos;
+  float deltaY = targetY - y_pos;
 
   setUpTurn(calc_orientation(deltaX, deltaY));
   while (!motionComplete())
@@ -448,13 +551,13 @@ void EasyRobot::moveTo(long targetX, long targetY)
   }
   // a_pos = calculateOrientation(deltaX, deltaY);
 
-  long distance_diagonal = calc_diagonal_distance(deltaX, deltaY);
+  float distance_diagonal = calc_diagonal_distance(deltaX, deltaY);
 
   target_cord_LS = distance_diagonal;
   target_cord_RS = distance_diagonal;
   STR_MOVE = true;
-  leftMotor.setTargetPositionInMillimeters(target_cord_LS);
-  rightMotor.setTargetPositionInMillimeters(target_cord_RS);
+  L_setTarget_MM(target_cord_LS);
+  R_setTarget_MM(target_cord_RS);
 
   // Update the position and a_pos
   // updatePosition(deltaX, deltaY, deltaOrientation);
@@ -462,19 +565,8 @@ void EasyRobot::moveTo(long targetX, long targetY)
 
 bool EasyRobot::motionComplete()
 {
-  // if (leftMotor.motionComplete())
-  // {
-  //   target_cord_LS = 0;
-  //   leftMotor.setCurrentPositionInMillimeters(0.00);
-  //   leftMotor.setTargetPositionInMillimeters(0.00);
-  // }
-  // if (rightMotor.motionComplete())
-  // {
-  //   target_cord_RS = 0;
-  //   rightMotor.setCurrentPositionInMillimeters(0.00);
-  //   rightMotor.setTargetPositionInMillimeters(0.00);
-  // }
-  if (leftMotor.motionComplete() && rightMotor.motionComplete())
+
+  if ((L_TargetSteps == L_CurrentSteps) && (R_TargetSteps == R_CurrentSteps))
   {
     STR_MOVE = false;
     ROT_MOVE = false;
@@ -492,32 +584,31 @@ bool EasyRobot::processMovement()
 
   if (!motionComplete())
   {
-    leftMotor.processMovement();
-    rightMotor.processMovement();
+    moveSteppers();
 
-    long delta_LS = 0;
-    long delta_RS = 0;
-    long delta_diag = 0;
-    double delta_orientatoion = 0;
-    long delatX = 0;
-    long deltaY = 0;
+    float delta_LS = 0;
+    float delta_RS = 0;
+    float delta_diag = 0;
+    float delta_orientatoion = 0;
+    float delatX = 0;
+    float deltaY = 0;
 
     bool update_pos_flag1 = false;
     bool update_pos_flag2 = false;
 
-    current_cord_LS = leftMotor.getCurrentPositionInMillimeters();
-    current_cord_RS = rightMotor.getCurrentPositionInMillimeters();
-    if ((current_cord_LS - previous_cord_LS) == 1)
+    current_cord_LS = L_getCurrentPos_MM();
+    current_cord_RS = R_getCurrentPos_MM();
+    if ((current_cord_LS - previous_cord_LS) >= 10)
     {
+      delta_LS = current_cord_LS - previous_cord_LS;
       previous_cord_LS = current_cord_LS;
-      delta_LS = 1;
       update_pos_flag1 = true;
     }
 
-    if ((current_cord_RS - previous_cord_RS) == 1)
+    if ((current_cord_RS - previous_cord_RS) >= 10)
     {
+      delta_RS = current_cord_RS - previous_cord_RS;
       previous_cord_RS = current_cord_RS;
-      delta_RS = 1;
       update_pos_flag2 = true;
     }
 
@@ -540,9 +631,9 @@ bool EasyRobot::processMovement()
         {
           delta_diag = delta_LS;
         }
-        Serial.println("CURRENT DIAG POS: " + (String)current_cord_LS);
-        Serial.println("DELTA DIST: " + (String)delta_diag);
-        Serial.println("Previous cord: " + (String)previous_cord_LS);
+        // Serial.println("CURRENT DIAG POS: " + (String)current_cord_LS);
+        // Serial.println("DELTA DIST: " + (String)delta_diag);
+        // Serial.println("Previous cord: " + (String)previous_cord_LS);
 
         delatX = calc_delta_X(delta_diag);
         deltaY = calc_delta_Y(delta_diag);
@@ -565,30 +656,30 @@ bool EasyRobot::processMovement()
 }
 
 // Move the robot forward
-void EasyRobot::setupMoveForward(long distance)
+void EasyRobot::setupMoveForward(float distance)
 {
-  leftMotor.setTargetPositionInMillimeters(leftMotor.getCurrentPositionInMillimeters() + distance);
-  rightMotor.setTargetPositionInMillimeters(rightMotor.getCurrentPositionInMillimeters() + distance);
+  L_setTarget_MM(distance);
+  R_setTarget_MM(distance);
 }
 
-void EasyRobot::setUpMove(long target_x, long target_y)
+void EasyRobot::setUpMove(float target_x, float target_y)
 {
-  leftMotor.setCurrentPositionInMillimeters(0);
-  rightMotor.setCurrentPositionInMillimeters(0);
+  L_CurrentSteps = 0;
+  R_CurrentSteps = 0;
 
-  long diagonal_distance = calc_diagonal_distance(target_x, target_y);
+  float diagonal_distance = calc_diagonal_distance(target_x, target_y);
 
-  leftMotor.setTargetPositionInMillimeters(diagonal_distance);
-  rightMotor.setTargetPositionInMillimeters(diagonal_distance);
+  L_setTarget_MM(diagonal_distance);
+  R_setTarget_MM(diagonal_distance);
   STR_MOVE = true;
   ROT_MOVE = false;
 }
 
 // Turn the robot by a given angle (in radians)
-void EasyRobot::setUpTurn(double TargetOrientation)
+void EasyRobot::setUpTurn(float TargetOrientation)
 {
-  leftMotor.setCurrentPositionInMillimeters(0);
-  rightMotor.setCurrentPositionInMillimeters(0);
+  L_CurrentSteps = 0;
+  R_CurrentSteps = 0;
   float angle = TargetOrientation - a_pos;
   if (angle > PI)
   {
@@ -599,8 +690,8 @@ void EasyRobot::setUpTurn(double TargetOrientation)
     angle = angle + (2 * PI);
   }
   float distance = angle * rotationConstant;
-  leftMotor.setTargetPositionInMillimeters(distance);
-  rightMotor.setTargetPositionInMillimeters(-distance);
+  L_setTarget_MM(distance);
+  R_setTarget_MM(-distance);
   ROT_MOVE = true;
   STR_MOVE = false;
   // if (distance != 0)
@@ -609,7 +700,7 @@ void EasyRobot::setUpTurn(double TargetOrientation)
   // }
 }
 
-void EasyRobot::setUpTurnDeg(double angle)
+void EasyRobot::setUpTurnDeg(float angle)
 {
   setUpTurn(2 * PI * (angle / 360));
 }
@@ -629,16 +720,16 @@ void EasyRobot::stop()
   }
 }
 
-float EasyRobot::toDeg(double rad)
+float EasyRobot::toDeg(float rad)
 {
   return (int)(rad * (180.0 / PI));
 }
-float EasyRobot::toRad(double deg)
+float EasyRobot::toRad(float deg)
 {
   return deg * (PI / 180.0);
 }
 
-bool EasyRobot::add_move(long targetX, long targetY)
+bool EasyRobot::add_move(float targetX, float targetY)
 {
   move temp(targetX, targetY);
   if (!move_q.isFull())
@@ -653,7 +744,7 @@ bool EasyRobot::add_move(long targetX, long targetY)
   }
 }
 
-bool EasyRobot::add_move(double targetA)
+bool EasyRobot::add_move(float targetA)
 {
   move temp(targetA);
   if (!move_q.isFull())
