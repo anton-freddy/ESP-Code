@@ -2,77 +2,233 @@
 
 ArduinoQueue<move> move_q(500);
 
+// void send_ERROR(int error_code)
+// {
+//   switch (error_code)
+//   {
+//   case 0x00:
+//     // LiDAR 1 I2C communication issue
+//     break;
+//   case 0x01:
+//     // LiDAR 2 I2C communication issue
+//     break;
+
+//   case 0x02:
+//     // LiDAR 3 I2C communication issue
+//     break;
+
+//   case 0x03:
+//     //  No valid direction for L stepper motor
+//     break;
+
+//   case 0x04:
+//     //  No valid direction for R stepper motor
+//     break;
+
+//   default:
+//     return;
+//     break;
+//   }
+// }
+
 //--  Constructor
-EasyRobot::EasyRobot(int steps_per_revolution, float wheel_circumfrence, float wheel_distance)
+EasyRobot::EasyRobot(float wheel_circumfrence, float wheel_distance, int MICRO_STEP, int STEPPER_STEP_COUNT, int GEAR_RATIO)
 {
-  steps_per_rev = steps_per_revolution;
+  steps_per_rev = MICRO_STEP * STEPPER_STEP_COUNT * GEAR_RATIO;
   wheel_circumfrence_mm = wheel_circumfrence;
   wheel_distance_mm = wheel_distance;
   steps_per_mm = steps_per_rev / wheel_circumfrence_mm;
+  micro_step = MICRO_STEP;
+  stepper_steps_per_rev = STEPPER_STEP_COUNT;
+  gear_ratio = GEAR_RATIO;
 }
 
 //--  Stepper Movement -----------------------------------------
 
-bool EasyRobot::moveSteppers()
+void EasyRobot::update_stepper_DIR_pin()
 {
-  L_step_time = 1000 / L_TargetSpeed;
-  R_step_time = 1000 / R_TargetSpeed;
-  if (abs(L_CurrentSteps) < abs(L_TargetSteps))
+  switch (L_direction)
   {
-    long current_time = millis();
+  case 1:
+    digitalWrite(L_D_pin, LOW);
+    break;
+
+  case -1:
+    digitalWrite(L_D_pin, HIGH);
+    break;
+
+  default:
+    send_ERROR(0x03);
+    break;
+  }
+  switch (R_direction)
+  {
+  case 1:
+    digitalWrite(R_D_pin, LOW);
+    break;
+
+  case -1:
+    digitalWrite(R_D_pin, HIGH);
+    break;
+
+  default:
+    send_ERROR(0x04);
+    break;
+  }
+}
+
+bool EasyRobot::L_stepper_target_reached()
+{
+  switch (L_direction)
+  {
+  case 1:
+    if (L_Current_POS_CM < L_Target_POS_CM)
+    {
+      return false;
+    }
+    else if (L_Current_POS_CM > L_Target_POS_CM)
+    {
+      L_direction = L_direction*-1;
+      return false;
+    }
+    else if (L_Current_POS_CM == L_Target_POS_CM)
+    {
+      return true;
+    }
+    else
+    {
+      return false;
+    }
+    break;
+
+  case -1:
+    if (L_Current_POS_CM > L_Target_POS_CM)
+    {
+      return false;
+    }
+    else if (L_Current_POS_CM < L_Target_POS_CM)
+    {
+      L_direction = L_direction*-1;
+      return false;
+    }
+    else if (L_Current_POS_CM == L_Target_POS_CM)
+    {
+      return true;
+    }
+    else
+    {
+      return false;
+    }
+    break;
+
+  default:
+    send_ERROR(0x03);
+    return false;
+    break;
+  }
+}
+bool EasyRobot::R_stepper_target_reached()
+{
+  switch (R_direction)
+  {
+  case 1:
+    if (R_Current_POS_CM < R_Target_POS_CM)
+    {
+      return false;
+    }
+    else if (R_Current_POS_CM > R_Target_POS_CM)
+    {
+      R_direction = -1*R_direction;
+      return false;
+    }
+    else if (R_Current_POS_CM == R_Target_POS_CM)
+    {
+      return true;
+    }
+    else
+    {
+      
+      return false;
+    }
+    break;
+
+  case -1:
+    if (R_Current_POS_CM > R_Target_POS_CM)
+    {
+      return false;
+    }
+    else if (R_Current_POS_CM < R_Target_POS_CM)
+    {
+      R_direction = -1*R_direction;
+      return false;
+    }
+    else if (R_Current_POS_CM == R_Target_POS_CM)
+    {
+      return true;
+    }
+    else
+    {
+    
+      return false;
+    }
+    break;
+
+  default:
+    send_ERROR(0x04);
+    return false;
+    break;
+  }
+}
+
+void EasyRobot::moveSteppers()
+{
+  update_stepper_DIR_pin();
+
+  L_step_time = 10000000 / L_Speed_SPS;
+  R_step_time = 10000000 / R_Speed_SPS;
+
+  if (L_STEP_MOVING)
+  {
+    enableStepper(left);
+    long current_time = micros();
+    // long current_time = millis();
     if ((current_time - L_previous_time) >= L_step_time)
     {
       L_previous_time = current_time;
       digitalWrite(L_S_pin, HIGH);
-      if (L_direction == 1)
-      {
-        L_CurrentSteps++;
-      }
-      else if (L_direction == -1)
-      {
-        L_CurrentSteps--;
-      }
     }
     digitalWrite(L_S_pin, LOW);
   }
-
-  if (abs(R_CurrentSteps) < abs(R_TargetSteps))
+  else
   {
-    long current_time = millis();
+    disableStepper(left);
+  }
+
+  if (R_STEP_MOVING)
+  {
+    enableStepper(right);
+    long current_time = micros();
+    // long current_time = millis();
     if ((current_time - R_previous_time) >= R_step_time)
     {
       R_previous_time = current_time;
       digitalWrite(R_S_pin, HIGH);
-      if (R_direction == 1)
-      {
-        R_CurrentSteps++;
-      }
-      else if (R_direction == -1)
-      {
-        R_CurrentSteps--;
-      }
     }
     digitalWrite(R_S_pin, LOW);
   }
-  if (L_CurrentSteps == L_TargetSteps && R_CurrentSteps == R_TargetSteps)
-  {
-    return true;
-  }
   else
   {
-    return false;
+    disableStepper(right);
   }
 }
 
 void EasyRobot::L_setSpeed_SPS(long SPS)
 {
-  L_TargetSpeed = SPS;
-  L_CurrentSpeed = L_TargetSpeed;
+  L_Speed_SPS = SPS;
 }
 void EasyRobot::R_setSpeed_SPS(long SPS)
 {
-  R_TargetSpeed = SPS;
-  R_CurrentSpeed = R_TargetSpeed;
+  R_Speed_SPS = SPS;
 }
 void EasyRobot::L_setSpeed_MMPS(float MMPS)
 {
@@ -86,79 +242,56 @@ void EasyRobot::setAcceleration_SPSPS(long SPSPS)
 {
 }
 
-float EasyRobot::L_getCurrentPos_MM(void)
+float EasyRobot::L_getCurrentPos_CM(void)
 {
-  return L_CurrentSteps / steps_per_mm;
+  return L_Current_POS_CM; // / steps_per_mm;
 }
 float EasyRobot::L_getCurrentSpeed_MMS(void)
 {
-  return L_CurrentSpeed / steps_per_mm;
+  return L_Speed_SPS / steps_per_mm;
 }
-float EasyRobot::R_getCurrentPos_MM(void)
+float EasyRobot::R_getCurrentPos_CM(void)
 {
-  return R_CurrentSteps / steps_per_mm;
+  return R_Current_POS_CM; // / steps_per_mm;
 }
 float EasyRobot::R_getCurrentSpeed_MMS(void)
 {
-  return R_CurrentSpeed / steps_per_mm;
+  return R_Speed_SPS / steps_per_mm;
 }
 
-void EasyRobot::L_setTarget_MM(float Target_MM)
+void EasyRobot::L_setTarget_POS(float Target_MM)
 {
-  L_setTarget_STEP(Target_MM * steps_per_mm);
-}
-void EasyRobot::L_setTarget_STEP(long Target_STEP)
-{
-  L_TargetSteps = Target_STEP;
-  if (L_TargetSteps < L_CurrentSteps)
+  L_Target_POS_CM = Target_MM;
+  if (Target_MM < 0)
   {
     L_direction = -1;
-    digitalWrite(L_D_pin, LOW);
   }
   else
   {
     L_direction = 1;
-    digitalWrite(L_D_pin, HIGH);
   }
 }
-void EasyRobot::R_setTarget_MM(float Target_MM)
+
+void EasyRobot::R_setTarget_POS(float Target_MM)
 {
-  R_setTarget_STEP(Target_MM * steps_per_mm);
-}
-void EasyRobot::R_setTarget_STEP(long Target_STEP)
-{
-  R_TargetSteps = Target_STEP;
-  if (R_TargetSteps < R_CurrentSteps)
+  R_Target_POS_CM = Target_MM;
+  if (Target_MM < 0)
   {
     R_direction = -1;
-    digitalWrite(R_D_pin, LOW);
   }
   else
   {
     R_direction = 1;
-    digitalWrite(R_D_pin, HIGH);
   }
 }
+
 //--  Private Functions ----------------------------------------
 
 // Updates the position of the robot, values passed should be delta values, NOT target values
 void EasyRobot::updatePosition(float deltaX, float deltaY, float deltaOrientation)
 {
-  x_pos += deltaX;
-  y_pos += deltaY;
-  a_pos += deltaOrientation;
-  if (a_pos < 0)
-  {
-    a_pos = a_pos + (2 * PI);
-  }
-  else if (a_pos > (2 * PI))
-  {
-    a_pos = a_pos - (2 * PI);
-  }
-  else if (a_pos == (2 * PI))
-  {
-    a_pos = 0;
-  }
+  updatePosition(deltaX, deltaY);
+  updatePosition(deltaOrientation);
 }
 
 // Updates the position of the robot, values passed should be delta values, NOT target values
@@ -416,8 +549,8 @@ void EasyRobot::setSpeedInKMH(float speed)
 // Sets the speed of the robot in mm/s, !!NOTE!! you must set the steps per millimeter before setting the speed
 void EasyRobot::setSpeedInMMS(float speed)
 {
-  L_TargetSpeed = speed * steps_per_mm;
-  R_TargetSpeed = speed * steps_per_mm;
+  L_setSpeed_MMPS(speed);
+  R_setSpeed_MMPS(speed);
 }
 
 // Sets the speed of the robot in KM/h, !!NOTE!! you must set the steps per millimeter before setting the speed
@@ -430,13 +563,9 @@ void EasyRobot::setAccelerationInKMHH(float speed)
 void EasyRobot::setAccelerationInMMSS(float speed)
 {
 
-  leftMotor.setAccelerationInMillimetersPerSecondPerSecond(speed);
-  rightMotor.setAccelerationInMillimetersPerSecondPerSecond(speed);
-}
-
-void EasyRobot::sendError(String MSG)
-{
-  Serial.println(MSG);
+  // leftMotor.setAccelerationInMillimetersPerSecondPerSecond(speed);
+  // rightMotor.setAccelerationInMillimetersPerSecondPerSecond(speed);
+  setAcceleration_SPSPS(steps_per_mm * speed);
 }
 
 //--  Public Functions ----------------------------------------
@@ -448,18 +577,17 @@ void EasyRobot::begin(unit speed_units, float speed, float Acceleration)
   if (speed_units == 1)
   {
     setSpeedInKMH(speed);
-    // setAccelerationInKMHH(Acceleration);
+    setAccelerationInKMHH(Acceleration);
   }
   else
   {
     setSpeedInMMS(speed);
-    // setAccelerationInMMSS(Acceleration);
+    setAccelerationInMMSS(Acceleration);
   }
-  L_CurrentSteps = 0;
-  R_CurrentSteps = 0;
-  L_TargetSteps = 0;
-  R_TargetSteps = 0;
-
+  L_Current_POS_CM = 0;
+  R_Current_POS_CM = 0;
+  L_Target_POS_CM = 0;
+  R_Target_POS_CM = 0;
 
   x_pos = 0;
   y_pos = 0;
@@ -474,8 +602,10 @@ void EasyRobot::begin(unit speed_units, float speed, float Acceleration)
   current_cord_RS = 0;
   target_cord_LS = 0;
   target_cord_RS = 0;
+
+  Serial.println("ROOMBA SETUP COMPLETE");
 }
-void EasyRobot::setUpPins(byte leftMotorStepPin, byte leftMotorDirPin, byte leftMotorEnablePin, byte rightMotorStepPin, byte rightMotorDirPin, byte rightMotorEnablePin)
+void EasyRobot::setUpMotors(byte leftMotorStepPin, byte leftMotorDirPin, byte leftMotorEnablePin, byte rightMotorStepPin, byte rightMotorDirPin, byte rightMotorEnablePin)
 {
   L_S_pin = leftMotorStepPin;
   L_D_pin = leftMotorDirPin;
@@ -496,6 +626,76 @@ void EasyRobot::setUpPins(byte leftMotorStepPin, byte leftMotorDirPin, byte left
   digitalWrite(R_S_pin, LOW);
   digitalWrite(R_D_pin, LOW);
   digitalWrite(R_E_pin, LOW);
+
+  Serial.println("MOTOR SETUP COMPLETE");
+}
+
+void EasyRobot::setUpEncoders(byte L_ENC_SDA, byte L_ENC_SCL, byte R_ENC_SDA, byte R_ENC_SCL)
+{
+  Wire1.begin(L_ENC_SDA, L_ENC_SCL);
+  Wire.begin(R_ENC_SDA, R_ENC_SCL);
+
+  if (L_ENCODER.detectMagnet() == 0)
+  {
+    send_ERROR(0x05);
+  }
+
+  if (R_ENCODER.detectMagnet() == 0)
+  {
+    send_ERROR(0x06);
+  }
+  resetEncoders(both);
+
+  Serial.println("ENCODER SETUP COMPLETE");
+}
+
+void EasyRobot::resetEncoders(motor selector)
+{
+
+  switch (selector)
+  {
+  case left:
+    L_ENC_PREVIOUS = getEncoderAngle(left);
+    break;
+
+  case right:
+    R_ENC_PREVIOUS = getEncoderAngle(right);
+    break;
+
+  default:
+    L_ENC_PREVIOUS = getEncoderAngle(left);
+    R_ENC_PREVIOUS = getEncoderAngle(right);
+    break;
+  }
+}
+
+float EasyRobot::getEncoderAngle(motor identifier)
+{
+  float x, in_min, in_max, out_min, out_max;
+  in_min = 0;
+  in_max = 4095;
+  out_min = 0;
+  out_max = 360;
+  float newAngle = -1;
+  switch (identifier)
+  {
+  case left:
+    newAngle = L_ENCODER.getRawAngle();
+    break;
+
+  case right:
+    newAngle = R_ENCODER.getRawAngle();
+    break;
+
+  default:
+    send_ERROR(0x07);
+    return 0;
+  }
+  x = newAngle;
+  return ((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min);
+
+  /* Raw data reports 0 - 4095 segments, which is 0.087890625 of a degree */
+  // return (float)map_f(newAngle,0.0,4095.0,0.0,360.0);//(newAngle * 0.087890625)
 }
 
 // Overide the position stored by teh robot
@@ -553,11 +753,11 @@ void EasyRobot::moveTo(float targetX, float targetY)
 
   float distance_diagonal = calc_diagonal_distance(deltaX, deltaY);
 
-  target_cord_LS = distance_diagonal;
-  target_cord_RS = distance_diagonal;
+  L_Target_POS_CM = distance_diagonal;
+  R_Target_POS_CM = distance_diagonal;
   STR_MOVE = true;
-  L_setTarget_MM(target_cord_LS);
-  R_setTarget_MM(target_cord_RS);
+  L_setTarget_POS(target_cord_LS);
+  R_setTarget_POS(target_cord_RS);
 
   // Update the position and a_pos
   // updatePosition(deltaX, deltaY, deltaOrientation);
@@ -566,111 +766,126 @@ void EasyRobot::moveTo(float targetX, float targetY)
 bool EasyRobot::motionComplete()
 {
 
-  if ((L_TargetSteps == L_CurrentSteps) && (R_TargetSteps == R_CurrentSteps))
+  if ((L_stepper_target_reached()) && (R_stepper_target_reached()))
   {
     STR_MOVE = false;
     ROT_MOVE = false;
-    load_move();
+    L_STEP_MOVING = false;
+    L_STEP_MOVING = false;
+    // load_move();
     return true;
   }
   else
   {
+    if (!L_stepper_target_reached())
+    {
+      L_STEP_MOVING = true;
+    }
+    else
+    {
+      L_STEP_MOVING = false;
+    }
+    if (!R_stepper_target_reached())
+    {
+      R_STEP_MOVING = true;
+    }
+    else
+    {
+      R_STEP_MOVING = false;
+    }
+
     return false;
   }
 }
 
 bool EasyRobot::processMovement()
 {
+  UpdatePosFromEncoders(10);
+  moveSteppers();
 
-  if (!motionComplete())
+  if (!L_stepper_target_reached())
   {
-    moveSteppers();
-
-    float delta_LS = 0;
-    float delta_RS = 0;
-    float delta_diag = 0;
-    float delta_orientatoion = 0;
-    float delatX = 0;
-    float deltaY = 0;
-
-    bool update_pos_flag1 = false;
-    bool update_pos_flag2 = false;
-
-    current_cord_LS = L_getCurrentPos_MM();
-    current_cord_RS = R_getCurrentPos_MM();
-    if ((current_cord_LS - previous_cord_LS) >= 10)
-    {
-      delta_LS = current_cord_LS - previous_cord_LS;
-      previous_cord_LS = current_cord_LS;
-      update_pos_flag1 = true;
-    }
-
-    if ((current_cord_RS - previous_cord_RS) >= 10)
-    {
-      delta_RS = current_cord_RS - previous_cord_RS;
-      previous_cord_RS = current_cord_RS;
-      update_pos_flag2 = true;
-    }
-
-    if (update_pos_flag1 && update_pos_flag2)
-    {
-      if (ROT_MOVE && !STR_MOVE)
-      {
-        delta_orientatoion = (delta_LS + (-delta_RS) / 2.00) / rotationConstant;
-        // Serial.println("ROATE MOVE ACTIVE, chnage in A: " + (String) delta_orientatoion);
-      }
-      else if (!ROT_MOVE && STR_MOVE)
-      {
-
-        if (delta_LS != delta_RS)
-        {
-          delta_diag = ((abs(delta_LS) + abs(delta_RS)) / 2.00);
-          Serial.println("ERROR---Stepper Values not the same---");
-        }
-        else
-        {
-          delta_diag = delta_LS;
-        }
-        // Serial.println("CURRENT DIAG POS: " + (String)current_cord_LS);
-        // Serial.println("DELTA DIST: " + (String)delta_diag);
-        // Serial.println("Previous cord: " + (String)previous_cord_LS);
-
-        delatX = calc_delta_X(delta_diag);
-        deltaY = calc_delta_Y(delta_diag);
-      }
-      else if (ROT_MOVE && STR_MOVE)
-      {
-        Serial.println("ERROR---STRAIGHT MOVE AND ROTATE MOVE DETECTED SIMULTANEOUSLY");
-        return 0;
-      }
-      else
-      {
-        Serial.println("ERROR---NO VALID MOVE DETECTED");
-        return 0;
-      }
-      updatePosition(delatX, deltaY, delta_orientatoion);
-    }
-    return false;
+    L_STEP_MOVING = true;
   }
+  else
+  {
+    L_STEP_MOVING = false;
+  }
+
+  if (!R_stepper_target_reached())
+  {
+    R_STEP_MOVING = true;
+  }
+  else
+  {
+    R_STEP_MOVING = false;
+  }
+
   return true;
+}
+
+void EasyRobot::UpdatePosFromEncoders(long refresh_rate)
+{
+  encoder_current_millis = millis();
+  if (encoder_current_millis - encoder_previous_millis >= refresh_rate)
+  {
+    encoder_previous_millis = encoder_current_millis;
+    float L_ENC_READ = getEncoderAngle(left);
+    float R_ENC_READ = getEncoderAngle(right);
+    float L_delta_theta = L_ENC_READ - L_ENC_PREVIOUS;
+    float R_delta_theta = R_ENC_READ - R_ENC_PREVIOUS;
+    L_ENC_PREVIOUS = L_ENC_READ;
+    R_ENC_PREVIOUS = R_ENC_READ;
+    // Calculate the change in angle accounting for overflow
+    if (L_delta_theta > 180)
+    {
+      L_delta_theta -= 360.0; // Account for counter-clockwise movement
+    }
+    else if (L_delta_theta < -180)
+    {
+      L_delta_theta += 360.0; // Account for clockwise movement
+    }
+
+    if (R_delta_theta > 180)
+    {
+      R_delta_theta -= 360.0; // Account for counter-clockwise movement
+    }
+    else if (R_delta_theta < -180)
+    {
+      R_delta_theta += 360.0; // Account for clockwise movement
+    }
+
+    // Calculate the linear distance traveled
+    float L_delta_CM = (L_delta_theta / 360.0) * (wheel_circumfrence_mm / 10) * gear_ratio;
+    float R_delta_CM = (R_delta_theta / 360.0) * (wheel_circumfrence_mm / 10) * gear_ratio;
+
+    L_Current_POS_CM += L_delta_CM;
+    R_Current_POS_CM -= R_delta_CM;
+  }
 }
 
 // Move the robot forward
 void EasyRobot::setupMoveForward(float distance)
 {
-  L_setTarget_MM(distance);
-  R_setTarget_MM(distance);
+  L_Current_POS_CM = 0;
+  R_Current_POS_CM = 0;
+
+  L_setTarget_POS(distance);
+  R_setTarget_POS(distance);
+
+  STR_MOVE = true;
+  ROT_MOVE = false;
 }
 
 void EasyRobot::setUpMove(float target_x, float target_y)
 {
-  L_CurrentSteps = 0;
-  R_CurrentSteps = 0;
+  L_Current_POS_CM = 0;
+  R_Current_POS_CM = 0;
 
   float diagonal_distance = calc_diagonal_distance(target_x, target_y);
 
-  L_setTarget_MM(diagonal_distance);
-  R_setTarget_MM(diagonal_distance);
+  L_setTarget_POS(diagonal_distance);
+  R_setTarget_POS(diagonal_distance);
   STR_MOVE = true;
   ROT_MOVE = false;
 }
@@ -678,8 +893,8 @@ void EasyRobot::setUpMove(float target_x, float target_y)
 // Turn the robot by a given angle (in radians)
 void EasyRobot::setUpTurn(float TargetOrientation)
 {
-  L_CurrentSteps = 0;
-  R_CurrentSteps = 0;
+  L_Current_POS_CM = 0;
+  R_Current_POS_CM = 0;
   float angle = TargetOrientation - a_pos;
   if (angle > PI)
   {
@@ -690,8 +905,8 @@ void EasyRobot::setUpTurn(float TargetOrientation)
     angle = angle + (2 * PI);
   }
   float distance = angle * rotationConstant;
-  L_setTarget_MM(distance);
-  R_setTarget_MM(-distance);
+  L_setTarget_POS(distance);
+  R_setTarget_POS(-distance);
   ROT_MOVE = true;
   STR_MOVE = false;
   // if (distance != 0)
@@ -708,15 +923,46 @@ void EasyRobot::setUpTurnDeg(float angle)
 // Stop the robot // This is a blocking function while to robot decelerates to come to a stop
 void EasyRobot::stop()
 {
-  // leftMotor.setupStop();
-  // rightMotor.setupStop();
-  while (1)
+  L_STEP_MOVING = false;
+  R_STEP_MOVING = false;
+}
+
+void EasyRobot::resume()
+{
+  L_STEP_MOVING = true;
+  R_STEP_MOVING = true;
+}
+
+void EasyRobot::enableStepper(motor select)
+{
+  if (select == left)
   {
-    if (processMovement())
-    {
-      leftMotor.setCurrentPositionInSteps(0);
-      rightMotor.setCurrentPositionInSteps(0);
-    }
+    digitalWrite(L_E_pin, LOW);
+  }
+  if (select == right)
+  {
+    digitalWrite(R_E_pin, LOW);
+  }
+  if (select == both)
+  {
+    digitalWrite(R_E_pin, LOW);
+    digitalWrite(L_E_pin, LOW);
+  }
+}
+void EasyRobot::disableStepper(motor select)
+{
+  if (select == left)
+  {
+    digitalWrite(L_E_pin, HIGH);
+  }
+  if (select == right)
+  {
+    digitalWrite(R_E_pin, HIGH);
+  }
+  if (select == both)
+  {
+    digitalWrite(R_E_pin, HIGH);
+    digitalWrite(L_E_pin, HIGH);
   }
 }
 
@@ -739,7 +985,7 @@ bool EasyRobot::add_move(float targetX, float targetY)
   }
   else
   {
-    sendError("MOVE QUEUE IS FULL---");
+    send_ERROR(0x10);
     return false;
   }
 }
@@ -754,7 +1000,7 @@ bool EasyRobot::add_move(float targetA)
   }
   else
   {
-    sendError("MOVE QUEUE IS FULL---");
+    send_ERROR(0x08);
     return false;
   }
 }

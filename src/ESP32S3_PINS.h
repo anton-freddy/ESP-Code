@@ -1,7 +1,38 @@
-// This Header is used to set the pin numbers
+// This Header is used to set the pin numbers and set the includes
+
+// Inlcudes
+#include <Arduino.h>
+#include <pwmWrite.h>
+#include <Connection.h>
+#include <string>
+#include <iostream>
+#include <Wire.h>
+#include <ERROR.h>
+
+#include <Esp.h>
+
+// Libaries
+#include <EasyRobot.h>
+#include <TFLI2C.h>
+#include <ESP32Servo.h>
+
+
+
 const float WHEEL_CIRCUMFERENCE = 157.1;
 const float WHEEL_DISTANCE = 281.6; // OUTER: 311.6mm INNER: 281.6mm 
-const int STEPS_PER_REV = 3200;
+const int MICROSTEP = 8;
+const int STEPPER_STEP_COUNT = 200;
+const int GEAR_RATIO = 2;
+// const int STEPS_PER_REV;
+
+//  LUNA
+#define LiDAR_I2C Wire
+const int LiDAR_SCL_PIN = 17;
+const int LiDAR_SDA_PIN = 18;
+const int16_t LiDAR_ADD_1 = 0x10;  // Straight Ahead
+const int16_t LiDAR_ADD_2 = 0x25; // Swivel motor
+const int16_t LiDAR_ADD_3 = 0x15; //3rd Luna
+uint16_t LiDAR_frame_rate = FPS_250;
 
 // Motor Pins
 // S2
@@ -9,11 +40,17 @@ const int R_Stepper_STEP_PIN = 9;
 const int R_Stepper_DIR_PIN = 46;
 const int R_Stepper_ENABLE_PIN = 10;
 const int R_Stepper_ENCODER_PIN = 47;
+
+const int R_ENC_SDA = LiDAR_SDA_PIN;
+const int R_ENC_SCL = LiDAR_SCL_PIN;
 // S1
 const int L_Stepper_STEP_PIN = 7;
 const int L_Stepper_DIR_PIN = 6;
 const int L_Stepper_ENABLE_PIN = 15;
 const int L_Stepper_ENCODER_PIN = 21;
+
+const int L_ENC_SDA = 1;
+const int L_ENC_SCL = 2;
 
 // Servo
 const int SERVO_PIN = 16;
@@ -40,9 +77,7 @@ const int IR4_PIN = 11;
 const int LIM1_PIN = 5;
 const int LIM2_PIN = 4;
 
-//  I2C Bus
-const int TF_I2C_SCL_PIN = 17;
-const int TF_I2C_SDA_PIN = 18;
+
 
 //  SPI
 const int MISO_PIN = 39;
@@ -53,66 +88,3 @@ const int SD_CS_PIN = 42;
 //  RESET
 const int RST_PIN = 20;
 
-void set_IO_pins_low(void){
-    
-pinMode(L_Stepper_STEP_PIN, OUTPUT);
-pinMode(L_Stepper_DIR_PIN, OUTPUT);
-pinMode(L_Stepper_ENABLE_PIN, OUTPUT);
-pinMode(L_Stepper_ENCODER_PIN, INPUT);
-pinMode(R_Stepper_STEP_PIN, OUTPUT);
-pinMode(R_Stepper_DIR_PIN, OUTPUT);
-pinMode(R_Stepper_ENABLE_PIN, OUTPUT);
-pinMode(R_Stepper_ENCODER_PIN, INPUT);
-pinMode(SERVO_PIN, OUTPUT);
-pinMode(L_DC_PWM_PIN, OUTPUT);
-pinMode(L_DC_IN1_PIN, OUTPUT);
-pinMode(L_DC_IN2_PIN, OUTPUT);
-pinMode(R_DC_PWM_PIN, OUTPUT);
-pinMode(R_DC_IN1_PIN, OUTPUT);
-pinMode(R_DC_IN2_PIN, OUTPUT);
-pinMode(DC_STBY_PIN, OUTPUT);
-
-digitalWrite(L_Stepper_STEP_PIN, LOW);
-digitalWrite(L_Stepper_DIR_PIN, LOW);
-digitalWrite(L_Stepper_ENABLE_PIN, LOW);
-digitalWrite(R_Stepper_STEP_PIN, LOW);
-digitalWrite(R_Stepper_DIR_PIN, LOW);
-digitalWrite(R_Stepper_ENABLE_PIN, LOW);
-
-digitalWrite(SERVO_PIN, LOW);
-digitalWrite(L_DC_PWM_PIN, LOW);
-digitalWrite(L_DC_IN1_PIN, LOW);
-digitalWrite(L_DC_IN2_PIN, LOW);
-digitalWrite(R_DC_PWM_PIN, LOW);
-digitalWrite(R_DC_IN1_PIN, LOW);
-digitalWrite(R_DC_IN2_PIN, LOW);
-digitalWrite(DC_STBY_PIN, LOW);
-
-pinMode(TF_I2C_SCL_PIN, OUTPUT);
-pinMode(TF_I2C_SDA_PIN, OUTPUT);
-pinMode(MISO_PIN, OUTPUT);
-pinMode(MOSI_PIN, OUTPUT);
-pinMode(SPI_SCK_PIN, OUTPUT);
-pinMode(SD_CS_PIN, OUTPUT);
-pinMode(RST_PIN, OUTPUT);
-
-digitalWrite(TF_I2C_SCL_PIN, LOW);
-digitalWrite(TF_I2C_SDA_PIN, LOW);
-digitalWrite(MISO_PIN, LOW);
-digitalWrite(MOSI_PIN, LOW);
-digitalWrite(SPI_SCK_PIN, LOW);
-digitalWrite(SD_CS_PIN, LOW);
-digitalWrite(RST_PIN, HIGH);
-
-
-
-pinMode(IR1_PIN, INPUT);
-pinMode(IR2_PIN, INPUT);
-pinMode(IR3_PIN, INPUT);
-pinMode(IR4_PIN, INPUT);
-pinMode(LIM1_PIN, INPUT);
-pinMode(LIM2_PIN, INPUT);
-digitalWrite(R_Stepper_ENCODER_PIN, INPUT);
-digitalWrite(L_Stepper_ENCODER_PIN, INPUT);
-
-}
