@@ -1,10 +1,10 @@
 
 #include <ESP32S3_PINS.h>
+#include <ERROR.h>
 
 TFLI2C LiDAR;
 void setup_LiDAR();
-int16_t get_LiDAR1_reading();
-int16_t get_LiDAR2_reading();
+int16_t get_LiDAR_reading(int LiDAR_sel);
 
 void setup_IR();
 bool get_IR1_status();
@@ -32,18 +32,19 @@ void setup()
 {
   Serial.begin(115200);
   delay(1000);
+  
   ROOMBA.setUpMotors(L_Stepper_STEP_PIN, L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN);
   ROOMBA.setUpEncoders(L_ENC_SDA, L_ENC_SCL, R_ENC_SDA, R_ENC_SCL);
   ROOMBA.begin(KMH, 2, 1000); // 19.1525439
-  setup_LiDAR();
+  //setup_LiDAR();
   setup_IR();
   setup_servo();
 
   Serial.println("END OF SETUP");
-  ROOMBA.setupMoveForward(10);
+  ROOMBA.setupMoveForward(100);
   // ROOMBA.update_stepper_DIR_pin();
   //  while (1);
-
+  ROOMBA.resume();
   delay(1000);
   // while(1);
 }
@@ -52,20 +53,38 @@ void setup()
 void loop()
 {
   // ROOMBA.moveSteppers();
-  // ROOMBA.resume();
-  //  // ROOMBA.moveSteppers();
+  
+  ROOMBA.moveSteppers();
   ROOMBA.processMovement();
-  // ROOMBA.UpdatePosFromEncoders(1);
+
+
+  
+  loop1_currentMillis = millis();
+  if(loop1_currentMillis - loop1_previousMillis >= 50){
+    loop1_previousMillis = loop1_currentMillis;
+    ROOMBA.updatePose();
+  }
+
   currentMillis = millis();
   if (currentMillis > previousMillis + 100)
   {
     previousMillis = currentMillis;
     String ArrayLine;
     ArrayLine = (String)millis() + "\t";
-    ArrayLine += "Lidar 1: " + (String)get_LiDAR1_reading() + ", LiDAR 2: " + (String)get_LiDAR2_reading() + ", Servo A: " + (String)SERVO_pos + "\t";
-    ArrayLine += "L_ENC: " + (String)ROOMBA.L_getCurrentPos_CM() + ", R_ENC: " + (String)ROOMBA.R_getCurrentPos_CM();
+    ArrayLine += "X: " + (String)ROOMBA.getXCoordinate() + " Y: " + (String) ROOMBA.getYCoordinate() + " A: " + (String)ROOMBA.getOrientation();
     Serial.println(ArrayLine);
   }
+  // ROOMBA.UpdatePosFromEncoders(1);
+  // currentMillis = millis();
+  // if (currentMillis > previousMillis + 100)
+  // {
+  //   previousMillis = currentMillis;
+  //   String ArrayLine;
+  //   ArrayLine = (String)millis() + "\t";
+  //   ArrayLine += "Lidar 1: " + (String)get_LiDAR_reading(LiDAR_1) + ", LiDAR 2: " + (String)get_LiDAR_reading(LiDAR_2) + ", Servo A: " + (String)SERVO_pos + "\t";
+  //   ArrayLine += "L_ENC: " + (String)ROOMBA.L_getCurrentPos_CM() + ", R_ENC: " + (String)ROOMBA.R_getCurrentPos_CM();
+  //   Serial.println(ArrayLine);
+  // }
 
   // // if (!ROOMBA.motionComplete())
   // // {
@@ -85,7 +104,8 @@ void setup_LiDAR()
     }
     else
     {
-      send_ERROR(0x00);
+      send_ERROR(LiDAR_1, 0x00);
+      break;
     }
   }
 
@@ -98,7 +118,8 @@ void setup_LiDAR()
     }
     else
     {
-      send_ERROR(0x00);
+      send_ERROR(LiDAR_1, 0x01);
+      break;
     }
   }
   while (bool flag = false)
@@ -109,7 +130,8 @@ void setup_LiDAR()
     }
     else
     {
-      send_ERROR(0x01);
+      send_ERROR(LiDAR_2, 0x00);
+      break;
     }
   }
   while (bool flag = false)
@@ -121,7 +143,8 @@ void setup_LiDAR()
     }
     else
     {
-      send_ERROR(0x00);
+      send_ERROR(LiDAR_2, 0x01);
+      break;
     }
   }
   while (bool flag = false)
@@ -132,39 +155,85 @@ void setup_LiDAR()
     }
     else
     {
-      send_ERROR(0x02);
+      send_ERROR(LiDAR_3, 0x00);
+      break;
+    }
+  }
+  while (bool flag = false)
+  {
+    if (LiDAR.Set_Trig_Mode(LiDAR_ADD_3))
+    {
+
+      flag = true;
+    }
+    else
+    {
+      send_ERROR(LiDAR_3, 0x01);
+      break;
     }
   }
 
   Serial.println("LiDAR SETUP COMPLETE");
 }
 
-int16_t get_LiDAR1_reading()
+int16_t get_LiDAR_reading(int LiDAR_sel)
 {
-
-  int16_t temp;
-  if (LiDAR.getData(temp, LiDAR_ADD_1))
+  int16_t LiDAR_ADDR;
+  switch (LiDAR_sel)
   {
-    return temp;
+  case LiDAR_1:
+    LiDAR_ADDR = LiDAR_ADD_1;
+    break;
+
+  case LiDAR_2:
+    LiDAR_ADDR = LiDAR_ADD_2;
+    break;
+
+  case LiDAR_3:
+    LiDAR_ADDR = LiDAR_ADD_3;
+    break;
+  default:
+    break;
+  }
+  int16_t temp;
+
+  int i = 0;
+  while (i != 10 || !LiDAR.Set_Trigger(LiDAR_ADDR))
+  {
+    i++;
+  }
+  if (i == 10)
+  {
+    send_ERROR(LiDAR_sel, 0x02);
+    return 0;
   }
   else
   {
-    return 7777;
+    i = 0;
+    while (!LiDAR.getData(temp, LiDAR_ADDR) || i != 10)
+    {
+      i++;
+    }
+    if (i == 10)
+    {
+      send_ERROR(LiDAR_sel, 0x03);
+    }
   }
+  return temp;
 }
 
-int16_t get_LiDAR2_reading()
-{
-  int16_t temp;
-  if (LiDAR.getData(temp, LiDAR_ADD_2))
-  {
-    return temp;
-  }
-  else
-  {
-    return 7777;
-  }
-}
+// int16_t get_LiDAR2_reading()
+// {
+//   int16_t temp;
+//   if (LiDAR.getData(temp, LiDAR_ADD_2))
+//   {
+//     return temp;
+//   }
+//   else
+//   {
+//     return 7777;
+//   }
+// }
 
 void setup_IR()
 {
@@ -193,7 +262,7 @@ bool get_IR2_status()
   {
     return true;
   }
-  else
+  else if ( status == LOW)
   {
     return false;
   }

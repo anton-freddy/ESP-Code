@@ -2,35 +2,6 @@
 
 ArduinoQueue<move> move_q(500);
 
-// void send_ERROR(int error_code)
-// {
-//   switch (error_code)
-//   {
-//   case 0x00:
-//     // LiDAR 1 I2C communication issue
-//     break;
-//   case 0x01:
-//     // LiDAR 2 I2C communication issue
-//     break;
-
-//   case 0x02:
-//     // LiDAR 3 I2C communication issue
-//     break;
-
-//   case 0x03:
-//     //  No valid direction for L stepper motor
-//     break;
-
-//   case 0x04:
-//     //  No valid direction for R stepper motor
-//     break;
-
-//   default:
-//     return;
-//     break;
-//   }
-// }
-
 //--  Constructor
 EasyRobot::EasyRobot(float wheel_circumfrence, float wheel_distance, int MICRO_STEP, int STEPPER_STEP_COUNT, int GEAR_RATIO)
 {
@@ -58,7 +29,7 @@ void EasyRobot::update_stepper_DIR_pin()
     break;
 
   default:
-    send_ERROR(0x03);
+    send_ERROR(LEFT_STEPPER, 0x00);
     break;
   }
   switch (R_direction)
@@ -72,7 +43,7 @@ void EasyRobot::update_stepper_DIR_pin()
     break;
 
   default:
-    send_ERROR(0x04);
+    send_ERROR(RIGHT_STEPPER, 0x00);
     break;
   }
 }
@@ -88,7 +59,7 @@ bool EasyRobot::L_stepper_target_reached()
     }
     else if (L_Current_POS_CM > L_Target_POS_CM)
     {
-      L_direction = L_direction*-1;
+      L_direction = L_direction * -1;
       return false;
     }
     else if (L_Current_POS_CM == L_Target_POS_CM)
@@ -108,7 +79,7 @@ bool EasyRobot::L_stepper_target_reached()
     }
     else if (L_Current_POS_CM < L_Target_POS_CM)
     {
-      L_direction = L_direction*-1;
+      L_direction = L_direction * -1;
       return false;
     }
     else if (L_Current_POS_CM == L_Target_POS_CM)
@@ -122,7 +93,7 @@ bool EasyRobot::L_stepper_target_reached()
     break;
 
   default:
-    send_ERROR(0x03);
+    send_ERROR(LEFT_STEPPER, 0x01);
     return false;
     break;
   }
@@ -138,7 +109,7 @@ bool EasyRobot::R_stepper_target_reached()
     }
     else if (R_Current_POS_CM > R_Target_POS_CM)
     {
-      R_direction = -1*R_direction;
+      R_direction = -1 * R_direction;
       return false;
     }
     else if (R_Current_POS_CM == R_Target_POS_CM)
@@ -147,7 +118,7 @@ bool EasyRobot::R_stepper_target_reached()
     }
     else
     {
-      
+
       return false;
     }
     break;
@@ -159,7 +130,7 @@ bool EasyRobot::R_stepper_target_reached()
     }
     else if (R_Current_POS_CM < R_Target_POS_CM)
     {
-      R_direction = -1*R_direction;
+      R_direction = -1 * R_direction;
       return false;
     }
     else if (R_Current_POS_CM == R_Target_POS_CM)
@@ -168,13 +139,13 @@ bool EasyRobot::R_stepper_target_reached()
     }
     else
     {
-    
+
       return false;
     }
     break;
 
   default:
-    send_ERROR(0x04);
+    send_ERROR(RIGHT_STEPPER, 0x01);
     return false;
     break;
   }
@@ -317,6 +288,73 @@ void EasyRobot::updatePosition(float deltaOrientation)
   {
     a_pos = 0;
   }
+}
+
+void EasyRobot::updatePose()
+{
+
+
+  float L_ENC_READ = getEncoderAngle(left);
+  float R_ENC_READ = getEncoderAngle(right);
+  unsigned long currentTime = millis();
+  float elapsedTime = (currentTime - pose_previousTime) / 1000.0; // Convert to seconds
+
+  // Read encoder values
+
+  float L_delta_theta = L_ENC_READ - L_ENC_PREVIOUS;
+  float R_delta_theta = R_ENC_READ - R_ENC_PREVIOUS;
+  L_ENC_PREVIOUS = L_ENC_READ;
+  R_ENC_PREVIOUS = R_ENC_READ;
+  // Calculate the change in angle accounting for overflow
+  if (L_delta_theta > 180)
+  {
+    L_delta_theta -= 360.0; // Account for counter-clockwise movement
+  }
+  else if (L_delta_theta < -180)
+  {
+    L_delta_theta += 360.0; // Account for clockwise movement
+  }
+
+  if (R_delta_theta > 180)
+  {
+    R_delta_theta -= 360.0; // Account for counter-clockwise movement
+  }
+  else if (R_delta_theta < -180)
+  {
+    R_delta_theta += 360.0; // Account for clockwise movement
+  }
+
+  // Calculate the linear distance traveled
+  float L_delta_CM = (L_delta_theta / 360.0) * (wheel_circumfrence_mm / 10) * gear_ratio;
+  float R_delta_CM = (R_delta_theta / 360.0) * (wheel_circumfrence_mm / 10) * gear_ratio;
+
+  float leftDist = (L_delta_theta / 360.0) * (wheel_circumfrence_mm / 10) * gear_ratio;  // Function to get left encoder distance change in cm
+  float rightDist = (R_delta_theta / 360.0) * (wheel_circumfrence_mm / 10) * gear_ratio; // Function to get right encoder distance change in cm
+
+  // Calculate wheel velocities
+  float leftVel = (leftDist - L_prev_dist) / elapsedTime;
+  float rightVel = (rightDist - R_prev_dist) / elapsedTime;
+
+  // Calculate robot linear and angular velocities
+  float linearVel = (leftVel + rightVel) / 2.0;
+  float angularVel = (rightVel - leftVel) / (wheel_distance_mm / 10);
+
+  // Update robot pose
+  updatePosition(angularVel * elapsedTime);
+  updatePosition((linearVel * cos(getOrientation()) * elapsedTime),(linearVel * sin(getOrientation()) * elapsedTime));
+
+  // Store current values for next iteration
+  L_prev_dist = leftDist;
+  R_prev_dist = rightDist;
+  pose_previousTime = currentTime;
+  Serial.println("delta Theta: " + (String)(angularVel * elapsedTime));
+    Serial.println("delta X: " + (String)(linearVel * cos(getOrientation()) * elapsedTime));
+      Serial.println("delta Y: " + (String)(linearVel * sin(getOrientation()) * elapsedTime));
+
+  Serial.println("Linear Vel: " + (String)linearVel);
+  Serial.println("Angular Vel: " + (String)angularVel);
+  Serial.println("Left Distance: " + (String)leftDist);
+  Serial.println("Right Distance: " + (String)rightDist);
 }
 
 // Returns the target orinenation of the robot based on the change in X and Y
@@ -637,12 +675,20 @@ void EasyRobot::setUpEncoders(byte L_ENC_SDA, byte L_ENC_SCL, byte R_ENC_SDA, by
 
   if (L_ENCODER.detectMagnet() == 0)
   {
-    send_ERROR(0x05);
+    send_ERROR(LEFT_ENCODER, 0x00);
+  }
+  else if (L_ENCODER.detectMagnet() == 1)
+  {
+    Serial.println("L ENCODER MAGNET FOUND");
   }
 
   if (R_ENCODER.detectMagnet() == 0)
   {
-    send_ERROR(0x06);
+    send_ERROR(RIGHT_ENCODER, 0x00);
+  }
+  else if (R_ENCODER.detectMagnet() == 1)
+  {
+    Serial.println("R ENCODER MAGNET FOUND");
   }
   resetEncoders(both);
 
@@ -688,7 +734,7 @@ float EasyRobot::getEncoderAngle(motor identifier)
     break;
 
   default:
-    send_ERROR(0x07);
+    send_ERROR(ENCODERS, 0x02);
     return 0;
   }
   x = newAngle;
@@ -798,11 +844,17 @@ bool EasyRobot::motionComplete()
   }
 }
 
+long previous___Millis = 0;
+
 bool EasyRobot::processMovement()
 {
-  UpdatePosFromEncoders(10);
+  //UpdatePosFromEncoders(10);
   moveSteppers();
-
+  long current___Millis = millis();
+  if (current___Millis - previous___Millis >= 300)
+  {
+    //Serial.println("X: " + (String)getXCoordinate() + " Y: " + (String)getYCoordinate() + " A: " + (String)getOrientation());
+  }
   if (!L_stepper_target_reached())
   {
     L_STEP_MOVING = true;
@@ -859,8 +911,20 @@ void EasyRobot::UpdatePosFromEncoders(long refresh_rate)
     float L_delta_CM = (L_delta_theta / 360.0) * (wheel_circumfrence_mm / 10) * gear_ratio;
     float R_delta_CM = (R_delta_theta / 360.0) * (wheel_circumfrence_mm / 10) * gear_ratio;
 
+    float delta_X = 0;
+    float delta_Y = 0;
+    float delta_theta = 0;
+    if (STR_MOVE && !ROT_MOVE)
+    {
+      delta_X = calc_delta_X((L_delta_CM + R_delta_CM) / 2);
+      delta_Y = calc_delta_Y((L_delta_CM + R_delta_CM) / 2);
+    }
+    else if (!STR_MOVE && ROT_MOVE)
+    {
+      wheel_distance_mm;
+    }
     L_Current_POS_CM += L_delta_CM;
-    R_Current_POS_CM -= R_delta_CM;
+    R_Current_POS_CM += R_delta_CM;
   }
 }
 
@@ -985,7 +1049,7 @@ bool EasyRobot::add_move(float targetX, float targetY)
   }
   else
   {
-    send_ERROR(0x10);
+    send_ERROR(MOVEMENT, 0x00);
     return false;
   }
 }
@@ -1000,7 +1064,7 @@ bool EasyRobot::add_move(float targetA)
   }
   else
   {
-    send_ERROR(0x08);
+    send_ERROR(MOVEMENT, 0x00);
     return false;
   }
 }

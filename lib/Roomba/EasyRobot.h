@@ -11,7 +11,7 @@
 
 //void send_ERROR(int error_code);
 
-void send_ERROR(int error_code);
+// void send_ERROR(int error_code);
 
 
 
@@ -136,9 +136,13 @@ AMS_5600_Wire1 L_ENCODER;
   long previousMillis_pos_update = 0;
 
   const float rotationConstant = 171.931/10; // 158.3;//160.49877; // Must be adjusted based on wheel distance and mounting points
-  float x_pos;
-  float y_pos;
-  float a_pos;
+  float x_pos = 0;
+  float y_pos = 0;
+  float a_pos = 0;
+  float L_prev_dist = 0;
+  float R_prev_dist = 0;
+  unsigned long pose_previousTime = 0;
+
   bool L_MOVE_DONE;
   bool R_MOVE_DONE;
   bool ROT_MOVE = false;
@@ -186,12 +190,14 @@ AMS_5600_Wire1 L_ENCODER;
 
 
 public:
-    void update_stepper_DIR_pin();
+  void update_stepper_DIR_pin();
   void moveSteppers();
   void enableStepper(motor select);
   void disableStepper(motor select);
   EasyRobot(float wheel_circumfrence, float wheel_distance, int MICRO_STEP, int STEPPER_STEP_COUNT, int GEAR_RATIO);
   void UpdatePosFromEncoders(long refresh_rate);
+
+  void updatePose();
 
   void begin(unit speed_units, float speed, float Acceleration);
   void setUpMotors(byte leftMotorStepPin, byte leftMotorDirPin, byte leftMotorEnablePin, byte rightMotorStepPin, byte rightMotorDirPin, byte rightMotorEnablePin);
