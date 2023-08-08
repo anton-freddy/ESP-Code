@@ -31,8 +31,6 @@ long currentMillis = 0;
 void setup()
 {
   Serial.begin(115200);
-  delay(1000);
-  
   ROOMBA.setUpMotors(L_Stepper_STEP_PIN, L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN);
   ROOMBA.setUpEncoders(L_ENC_SDA, L_ENC_SCL, R_ENC_SDA, R_ENC_SCL);
   ROOMBA.begin(KMH, 2, 1000); // 19.1525439

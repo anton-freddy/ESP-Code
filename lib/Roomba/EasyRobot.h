@@ -61,7 +61,7 @@ struct move
   {
     target_a_pos = 0;
     target_x_pos = x;
-    traget_y_pos = y;
+    traget_y_pos                                                                                                                                                                                                                                                                        = y;
     is_rotate = false;
   }
   move(float a)

@@ -293,7 +293,6 @@ void EasyRobot::updatePosition(float deltaOrientation)
 void EasyRobot::updatePose()
 {
 
-
   float L_ENC_READ = getEncoderAngle(left);
   float R_ENC_READ = getEncoderAngle(right);
   unsigned long currentTime = millis();
@@ -323,11 +322,6 @@ void EasyRobot::updatePose()
   {
     R_delta_theta += 360.0; // Account for clockwise movement
   }
-
-  // Calculate the linear distance traveled
-  float L_delta_CM = (L_delta_theta / 360.0) * (wheel_circumfrence_mm / 10) * gear_ratio;
-  float R_delta_CM = (R_delta_theta / 360.0) * (wheel_circumfrence_mm / 10) * gear_ratio;
-
   float leftDist = (L_delta_theta / 360.0) * (wheel_circumfrence_mm / 10) * gear_ratio;  // Function to get left encoder distance change in cm
   float rightDist = (R_delta_theta / 360.0) * (wheel_circumfrence_mm / 10) * gear_ratio; // Function to get right encoder distance change in cm
 
@@ -341,20 +335,24 @@ void EasyRobot::updatePose()
 
   // Update robot pose
   updatePosition(angularVel * elapsedTime);
-  updatePosition((linearVel * cos(getOrientation()) * elapsedTime),(linearVel * sin(getOrientation()) * elapsedTime));
+  updatePosition((linearVel * cos(getOrientation()) * elapsedTime), (linearVel * sin(getOrientation()) * elapsedTime));
 
   // Store current values for next iteration
   L_prev_dist = leftDist;
   R_prev_dist = rightDist;
   pose_previousTime = currentTime;
-  Serial.println("delta Theta: " + (String)(angularVel * elapsedTime));
-    Serial.println("delta X: " + (String)(linearVel * cos(getOrientation()) * elapsedTime));
-      Serial.println("delta Y: " + (String)(linearVel * sin(getOrientation()) * elapsedTime));
 
-  Serial.println("Linear Vel: " + (String)linearVel);
-  Serial.println("Angular Vel: " + (String)angularVel);
+  
+
+  Serial.println("Elapsed: " + (String)elapsedTime);
   Serial.println("Left Distance: " + (String)leftDist);
   Serial.println("Right Distance: " + (String)rightDist);
+  Serial.println("Linear Vel: " + (String)linearVel);
+  Serial.println("Angular Vel: " + (String)angularVel);
+  Serial.println("Orientation: " +(String)getOrientation());
+  Serial.println("delta Theta: " + (String)(angularVel * elapsedTime));
+  Serial.println("delta X: " + (String)(linearVel * cos(getOrientation()) * elapsedTime));
+  Serial.println("delta Y: " + (String)(linearVel * sin(getOrientation()) * elapsedTime));
 }
 
 // Returns the target orinenation of the robot based on the change in X and Y
@@ -848,12 +846,12 @@ long previous___Millis = 0;
 
 bool EasyRobot::processMovement()
 {
-  //UpdatePosFromEncoders(10);
+  // UpdatePosFromEncoders(10);
   moveSteppers();
   long current___Millis = millis();
   if (current___Millis - previous___Millis >= 300)
   {
-    //Serial.println("X: " + (String)getXCoordinate() + " Y: " + (String)getYCoordinate() + " A: " + (String)getOrientation());
+    // Serial.println("X: " + (String)getXCoordinate() + " Y: " + (String)getYCoordinate() + " A: " + (String)getOrientation());
   }
   if (!L_stepper_target_reached())
   {
