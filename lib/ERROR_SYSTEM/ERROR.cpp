@@ -209,6 +209,10 @@ String getMovement_ERRORS(int module_code, int error_code)
         MSG += "MOVE QUEUE IS FULL";
         break;
 
+        case 0x01:
+        MSG += "MOVEMENT STATE ENCOUNTERED ERROR";
+        break;
+
     default:
         MSG += "UNKOWN ERROR";
         break;

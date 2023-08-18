@@ -7,15 +7,23 @@
 #include <AS5600_Wire1.h>
 #include <Wire.h>
 #include <ERROR.h>
-//  Wheel Distance = OUTER: 311.6mm INNER: 281.6mm 
-
-//void send_ERROR(int error_code);
+//  Wheel Distance = OUTER: 311.6mm INNER: 281.6mm
 
 // void send_ERROR(int error_code);
 
-
+// void send_ERROR(int error_code);
 
 const long CORD_REFRESH_RATE = 100; //  Rate at which the cordinates are updated
+
+enum MoveState
+{
+  IDLE,
+  TURN,
+  STRAIGHT,
+  BACK,
+  ERROR
+};
+
 enum unit
 {
   KMH = 1,
@@ -42,47 +50,23 @@ struct motor_move
   float RightMotor;
 };
 
-struct move
+struct Move
 {
-  float target_x_pos;
-  float traget_y_pos;
-  float target_a_pos;
-  bool is_rotate;
-
-  move()
-  {
-    target_a_pos = 0;
-    target_x_pos = 0;
-    traget_y_pos = 0;
-    is_rotate = false;
-  }
-
-  move(float x, float y)
-  {
-    target_a_pos = 0;
-    target_x_pos = x;
-    traget_y_pos                                                                                                                                                                                                                                                                        = y;
-    is_rotate = false;
-  }
-  move(float a)
-  {
-    target_a_pos = a;
-    target_x_pos = 0;
-    traget_y_pos = 0;
-    is_rotate = true;
-  }
+  float x;
+  float y;
+  Move *next;
 };
-
-
-
 
 class EasyRobot
 {
 
 private:
+  Move *head = nullptr;
+  Move *tail = nullptr;
+  MoveState movementState = IDLE;
 
-AMS_5600_Wire R_ENCODER;
-AMS_5600_Wire1 L_ENCODER;
+  AMS_5600_Wire R_ENCODER;
+  AMS_5600_Wire1 L_ENCODER;
 
   //  Stepper Varibales
   byte L_E_pin;
@@ -93,8 +77,7 @@ AMS_5600_Wire1 L_ENCODER;
   byte R_S_pin;
   byte R_D_pin;
 
- 
-
+  float defaultSpeed_MMS = 0;
   long acceleration;
   float wheel_circumfrence_mm;
   int steps_per_rev;
@@ -104,44 +87,60 @@ AMS_5600_Wire1 L_ENCODER;
   int stepper_steps_per_rev;
   int gear_ratio;
 
-  long encoder_current_millis = 0;
-  long encoder_previous_millis = 0;
+  //  Tolerance Variables
+  const float DistanceTolerance = 40;
+  const float ThetaTolernce = 0.05;
 
-  volatile float L_Current_POS_CM = 0;
-  volatile float L_Target_POS_CM = 0;
+  float targetX = 0.0;
+  float targetY = 0.0;
+
+  volatile float L_Current_POS_MM = 0;
+  volatile float L_Target_POS_MM = 0;
   float L_ENC_PREVIOUS = 0;
   float L_ENC_TOTAL_REV = 0;
-
 
   long L_direction = 0;
   long L_CurrentSpeed = 0;
   long L_Speed_SPS = 0;
-  long L_previous_time = 0;
+  
   long L_step_time = 0;
   bool L_STEP_MOVING = false;
 
-  volatile float R_Current_POS_CM = 0;
-  volatile float R_Target_POS_CM = 0;
+  volatile float R_Current_POS_MM = 0;
+  volatile float R_Target_POS_MM = 0;
+
   float R_ENC_PREVIOUS = 0;
   float R_ENC_TOTAL_REV = 0;
-
+  long R_step_time = 0;
   long R_direction = 0;
   long R_CurrentSpeed = 0;
   long R_Speed_SPS = 0;
-  long R_previous_time = 0;
-  long R_step_time = 0;
+  
+  
   bool R_STEP_MOVING = false;
 
-  long currentMillis_pos_update = 0;
-  long previousMillis_pos_update = 0;
+  float leftWheelSpeed = 1000;
+  float rightWheelSpeed = 1000;
 
-  const float rotationConstant = 171.931/10; // 158.3;//160.49877; // Must be adjusted based on wheel distance and mounting points
-  float x_pos = 0;
-  float y_pos = 0;
-  float a_pos = 0;
+  //  Timing Variables  //------------
+  unsigned long currentMillis_pos_update = 0;
+  unsigned long previousMillis_pos_update = 0;
+  unsigned long L_previous_time = 0;
+  unsigned long R_previous_time = 0;
+  unsigned long pose_previousTime = 0;
+  unsigned long encoder_current_millis = 0;
+  unsigned long encoder_previous_millis = 0;
+
+  const float rotationConstant = 171.931 / 10; // 158.3;//160.49877; // Must be adjusted based on wheel distance and mounting points
+
+  //  Position Variables  //--------
+  volatile float x_pos = 0;
+  volatile float y_pos = 0;
+  volatile float a_pos = 0;
+  pos target;
   float L_prev_dist = 0;
   float R_prev_dist = 0;
-  unsigned long pose_previousTime = 0;
+  
 
   bool L_MOVE_DONE;
   bool R_MOVE_DONE;
@@ -162,16 +161,18 @@ AMS_5600_Wire1 L_ENCODER;
   void L_setSpeed_MMPS(float MMPS);
   void R_setSpeed_MMPS(float MMPS);
   void setAcceleration_SPSPS(long SPSPS);
-
-
   void L_setTarget_POS(float Target_MM);
   void R_setTarget_POS(float Target_MM);
-
   bool L_stepper_target_reached();
-  bool R_stepper_target_reached();   
+  bool R_stepper_target_reached();
+  void setSpeedInKMH(float speed);
+  void setSpeedInMMS(float speed);
+  void setAccelerationInKMHH(float speed);
+  void setAccelerationInMMSS(float speed);
+  void resumeStepper(motor select);
+  void stopStepper(motor select);
 
-
-
+  //  Positioning   //-----------
   void updatePosition(float deltaX, float deltaY, float targetOrientation);
   void updatePosition(float deltaX, float deltaY);
   void updatePosition(float deltaOrientation);
@@ -180,24 +181,33 @@ AMS_5600_Wire1 L_ENCODER;
   float calc_delta_Y(float straight_line_dist);
   float calc_delta_X(float straight_line_dist);
   float calc_diagonal_distance(float target_x, float target_y);
+  float get_delta_theta(float target);
 
-  void load_move(void);
-
-  void setSpeedInKMH(float speed);
-  void setSpeedInMMS(float speed);
-  void setAccelerationInKMHH(float speed);
-  void setAccelerationInMMSS(float speed);
 
 
 public:
+  EasyRobot(float wheel_circumfrence, float wheel_distance, int MICRO_STEP, int STEPPER_STEP_COUNT, int GEAR_RATIO);
+  void loop();
+  //  Move Buffer   //-----------
+  void enqueueMove(float x, float y);
+  void insertMoveBeforeCurrent(float x, float y);
+  void executeMoves();
+
+  //  Positioning   //-----------
+  void updatePose();
+  void setPosition(float angle);
+  void setPosition(float xPos, float yPos);
+  void setPosition(float xPos, float yPos, float angle);
+
   void update_stepper_DIR_pin();
   void moveSteppers();
   void enableStepper(motor select);
   void disableStepper(motor select);
-  EasyRobot(float wheel_circumfrence, float wheel_distance, int MICRO_STEP, int STEPPER_STEP_COUNT, int GEAR_RATIO);
+
   void UpdatePosFromEncoders(long refresh_rate);
 
-  void updatePose();
+  
+  void followHeading(float heading, float speedMMS);
 
   void begin(unit speed_units, float speed, float Acceleration);
   void setUpMotors(byte leftMotorStepPin, byte leftMotorDirPin, byte leftMotorEnablePin, byte rightMotorStepPin, byte rightMotorDirPin, byte rightMotorEnablePin);
@@ -205,9 +215,7 @@ public:
   void resetEncoders(motor selector);
   float getEncoderAngle(motor identifier);
 
-  void setPosition(float angle);
-  void setPosition(float xPos, float yPos);
-  void setPosition(float xPos, float yPos, float angle);
+
 
   void setUpMove(float target_x, float target_y);
   void setUpTurn(float TargetOrientation);
@@ -235,5 +243,3 @@ public:
   bool add_move(float targetX, float targetY);
   bool add_move(float targetA);
 };
-
-

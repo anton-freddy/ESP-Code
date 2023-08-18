@@ -33,45 +33,62 @@ void setup()
   Serial.begin(115200);
   ROOMBA.setUpMotors(L_Stepper_STEP_PIN, L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN);
   ROOMBA.setUpEncoders(L_ENC_SDA, L_ENC_SCL, R_ENC_SDA, R_ENC_SCL);
-  ROOMBA.begin(KMH, 2, 1000); // 19.1525439
+  ROOMBA.begin(KMH, 3, 1000); // 19.1525439
   //setup_LiDAR();
   setup_IR();
-  setup_servo();
+  //setup_servo();
 
   Serial.println("END OF SETUP");
-  ROOMBA.setupMoveForward(100);
+  ROOMBA.enqueueMove(0,2000);
+  ROOMBA.enqueueMove(2000,3000);
+
   // ROOMBA.update_stepper_DIR_pin();
   //  while (1);
-  ROOMBA.resume();
+ 
+  //ROOMBA.setUpMove(1000,1000);
+  
+  // ROOMBA.moveTo(1000,1000);
+
   delay(1000);
   // while(1);
 }
 
+bool clockwise = false;
 //  Contorl Robot Movement
 void loop()
 {
-  // ROOMBA.moveSteppers();
-  
-  ROOMBA.moveSteppers();
-  ROOMBA.processMovement();
+  //ROOMBA.resume();
+  //ROOMBA.moveSteppers();
+  // if(get_LiDAR_reading(LiDAR_1) < 15){
+    
+  //   if(!clockwise){
+  //     ROOMBA.setUpTurn(PI);
+  //     clockwise = true;
+  //   } else {
+  //     ROOMBA.setUpTurn(0);
+  //     clockwise = false;
+  //   }
+    
+  ROOMBA.loop();
+  //ROOMBA.followHeading(PI, 5000);
 
 
   
-  loop1_currentMillis = millis();
-  if(loop1_currentMillis - loop1_previousMillis >= 50){
-    loop1_previousMillis = loop1_currentMillis;
-    ROOMBA.updatePose();
-  }
+  // loop1_currentMillis = millis();
+  // if(loop1_currentMillis - loop1_previousMillis >= 50){
+  //   loop1_previousMillis = loop1_currentMillis;
+  //   ROOMBA.updatePose();
+  // }
 
-  currentMillis = millis();
-  if (currentMillis > previousMillis + 100)
-  {
-    previousMillis = currentMillis;
-    String ArrayLine;
-    ArrayLine = (String)millis() + "\t";
-    ArrayLine += "X: " + (String)ROOMBA.getXCoordinate() + " Y: " + (String) ROOMBA.getYCoordinate() + " A: " + (String)ROOMBA.getOrientation();
-    Serial.println(ArrayLine);
-  }
+  // currentMillis = millis();
+  // if (currentMillis > previousMillis + 100)
+  // {
+  //   previousMillis = currentMillis;
+  //   String ArrayLine;
+  //   ArrayLine = (String)millis() + "\t";
+  //   ArrayLine += "X: " + (String)ROOMBA.getXCoordinate() + " Y: " + (String) ROOMBA.getYCoordinate() + " A: " + (String)ROOMBA.getOrientation();
+  //   Serial.println(ArrayLine);
+  // }
   // ROOMBA.UpdatePosFromEncoders(1);
   // currentMillis = millis();
   // if (currentMillis > previousMillis + 100)
@@ -195,6 +212,9 @@ int16_t get_LiDAR_reading(int LiDAR_sel)
   }
   int16_t temp;
 
+
+  LiDAR.getData(temp, LiDAR_ADDR);
+  return temp;
   int i = 0;
   while (i != 10 || !LiDAR.Set_Trigger(LiDAR_ADDR))
   {

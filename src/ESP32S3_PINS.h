@@ -18,9 +18,9 @@
 
 
 
-const float WHEEL_CIRCUMFERENCE = 157.1;
-const float WHEEL_DISTANCE = 281.6; // OUTER: 311.6mm INNER: 281.6mm 
-const int MICROSTEP = 8;
+const float WHEEL_CIRCUMFERENCE = 153.15;//157.1; // Dia = 48.75
+const float WHEEL_DISTANCE = 311.6; //281.6; // OUTER: 311.6mm INNER: 281.6mm 
+const int MICROSTEP = 4;
 const int STEPPER_STEP_COUNT = 200;
 const int GEAR_RATIO = 2;
 // const int STEPS_PER_REV;
