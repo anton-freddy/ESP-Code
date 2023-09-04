@@ -77,6 +77,10 @@ private:
   byte R_S_pin;
   byte R_D_pin;
 
+  byte MS1_pin = 0;
+  byte MS2_pin = 0;
+  byte MS3_pin = 0;
+
   float defaultSpeed_MMS = 0;
   long acceleration;
   float wheel_circumfrence_mm;
@@ -210,8 +214,9 @@ public:
   void followHeading(float heading, float speedMMS);
 
   void begin(unit speed_units, float speed, float Acceleration);
+  void setUpMotors(byte leftMotorStepPin, byte leftMotorDirPin, byte leftMotorEnablePin, byte rightMotorStepPin, byte rightMotorDirPin, byte rightMotorEnablePin, byte MS1Pin, byte MS2Pin, byte MS3Pin);
   void setUpMotors(byte leftMotorStepPin, byte leftMotorDirPin, byte leftMotorEnablePin, byte rightMotorStepPin, byte rightMotorDirPin, byte rightMotorEnablePin);
-  void setUpEncoders(byte L_ENC_SDA, byte L_ENC_SCL, byte R_ENC_SDA, byte R_ENC_SCL);
+  void setUpEncoders();
   void resetEncoders(motor selector);
   float getEncoderAngle(motor identifier);
 

@@ -1,9 +1,18 @@
 
 #include <ESP32S3_PINS.h>
 #include <ERROR.h>
+#include <SoftwareSerial.h>
+
+enum RegisterAddress
+{
+  REG_TARGET_POS = 0x01,
+  REG_CURRENT_POS = 0x02,
+  REG_ELAPSED_TIME = 0x03
+};
 
 TFLI2C LiDAR;
 void setup_LiDAR();
+void setup_I2C();
 int16_t get_LiDAR_reading(int LiDAR_sel);
 
 void setup_IR();
@@ -16,9 +25,11 @@ Servo servo;
 bool SERVO_CLOCKWISE = true;
 int SERVO_pos = 0;
 long servo_previousMillis = 0;
-#define SERVO_INTERVAL 330
+#define SERVO_INTERVAL 200
 void setup_servo();
 void move_servo();
+void writeToSlave(uint8_t regAddress, uint8_t data);
+uint8_t requestFromSlave(uint8_t regAddress);
 
 EasyRobot ROOMBA(WHEEL_CIRCUMFERENCE, WHEEL_DISTANCE, MICROSTEP, STEPPER_STEP_COUNT, GEAR_RATIO);
 
@@ -31,22 +42,23 @@ long currentMillis = 0;
 void setup()
 {
   Serial.begin(115200);
-  ROOMBA.setUpMotors(L_Stepper_STEP_PIN, L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN);
-  ROOMBA.setUpEncoders(L_ENC_SDA, L_ENC_SCL, R_ENC_SDA, R_ENC_SCL);
-  ROOMBA.begin(KMH, 3, 1000); // 19.1525439
-  //setup_LiDAR();
-  setup_IR();
-  //setup_servo();
+  setup_I2C();
+  ROOMBA.setUpMotors(L_Stepper_STEP_PIN, L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN, MS1_pin, MS2_pin, MS3_pin);
+  ROOMBA.setUpEncoders();
+  // ROOMBA.begin(KMH, 3, 1000); // 19.1525439
+  // setup_LiDAR();
+  // setup_IR();
+  setup_servo();
 
   Serial.println("END OF SETUP");
-  ROOMBA.enqueueMove(0,2000);
-  ROOMBA.enqueueMove(2000,3000);
+  ROOMBA.enqueueMove(0, 1000);
+  ROOMBA.enqueueMove(0, 0);
 
   // ROOMBA.update_stepper_DIR_pin();
   //  while (1);
- 
-  //ROOMBA.setUpMove(1000,1000);
-  
+
+  // ROOMBA.setUpMove(1000,1000);
+
   // ROOMBA.moveTo(1000,1000);
 
   delay(1000);
@@ -57,23 +69,10 @@ bool clockwise = false;
 //  Contorl Robot Movement
 void loop()
 {
-  //ROOMBA.resume();
-  //ROOMBA.moveSteppers();
-  // if(get_LiDAR_reading(LiDAR_1) < 15){
-    
-  //   if(!clockwise){
-  //     ROOMBA.setUpTurn(PI);
-  //     clockwise = true;
-  //   } else {
-  //     ROOMBA.setUpTurn(0);
-  //     clockwise = false;
-  //   }
-    
+  // move_servo();
   ROOMBA.loop();
-  //ROOMBA.followHeading(PI, 5000);
+  // ROOMBA.followHeading(PI, 5000);
 
-
-  
   // loop1_currentMillis = millis();
   // if(loop1_currentMillis - loop1_previousMillis >= 50){
   //   loop1_previousMillis = loop1_currentMillis;
@@ -109,7 +108,7 @@ void loop()
 
 void setup_LiDAR()
 {
-  // LiDAR_I2C.begin(LiDAR_SDA_PIN, LiDAR_SCL_PIN, 100000);
+  I2CA.begin(I2CA_SDA, I2CA_SCL);
   while (bool flag = false)
   {
     if (LiDAR.Set_Frame_Rate(LiDAR_frame_rate, LiDAR_ADD_1))
@@ -162,31 +161,31 @@ void setup_LiDAR()
       break;
     }
   }
-  while (bool flag = false)
-  {
-    if (LiDAR.Set_Frame_Rate(LiDAR_frame_rate, LiDAR_ADD_3))
-    {
-      flag = true;
-    }
-    else
-    {
-      send_ERROR(LiDAR_3, 0x00);
-      break;
-    }
-  }
-  while (bool flag = false)
-  {
-    if (LiDAR.Set_Trig_Mode(LiDAR_ADD_3))
-    {
+  // while (bool flag = false)
+  // {
+  //   if (LiDAR.Set_Frame_Rate(LiDAR_frame_rate, LiDAR_ADD_3))
+  //   {
+  //     flag = true;
+  //   }
+  //   else
+  //   {
+  //     send_ERROR(LiDAR_3, 0x00);
+  //     break;
+  //   }
+  // }
+  // while (bool flag = false)
+  // {
+  //   if (LiDAR.Set_Trig_Mode(LiDAR_ADD_3))
+  //   {
 
-      flag = true;
-    }
-    else
-    {
-      send_ERROR(LiDAR_3, 0x01);
-      break;
-    }
-  }
+  //     flag = true;
+  //   }
+  //   else
+  //   {
+  //     send_ERROR(LiDAR_3, 0x01);
+  //     break;
+  //   }
+  // }
 
   Serial.println("LiDAR SETUP COMPLETE");
 }
@@ -212,12 +211,15 @@ int16_t get_LiDAR_reading(int LiDAR_sel)
   }
   int16_t temp;
 
-
-  LiDAR.getData(temp, LiDAR_ADDR);
-  return temp;
+  // LiDAR.getData(temp, LiDAR_ADDR);
+  // return temp;
   int i = 0;
-  while (i != 10 || !LiDAR.Set_Trigger(LiDAR_ADDR))
+  while (i < 10)
   {
+    if (LiDAR.Set_Trigger(LiDAR_ADDR))
+    {
+      break;
+    }
     i++;
   }
   if (i == 10)
@@ -228,16 +230,20 @@ int16_t get_LiDAR_reading(int LiDAR_sel)
   else
   {
     i = 0;
-    while (!LiDAR.getData(temp, LiDAR_ADDR) || i != 10)
+    while (i < 10)
     {
+      if (LiDAR.getData(temp, LiDAR_ADDR))
+      {
+        return temp;
+      }
       i++;
     }
     if (i == 10)
     {
       send_ERROR(LiDAR_sel, 0x03);
+      return 0;
     }
   }
-  return temp;
 }
 
 // int16_t get_LiDAR2_reading()
@@ -280,7 +286,7 @@ bool get_IR2_status()
   {
     return true;
   }
-  else if ( status == LOW)
+  else if (status == LOW)
   {
     return false;
   }
@@ -298,35 +304,101 @@ void IR2_ISR()
 
 void setup_servo()
 {
-  SERVO_pos = 90;
-  servo.attach(SERVO_PIN);
-  SERVO_CLOCKWISE = true;
-  servo.write(SERVO_pos);
-  Serial.println("SERVO SETUP COMPLETE");
-}
-void move_servo()
-{
-  long servo_currentMillis = millis();
-  if (servo_currentMillis - servo_previousMillis >= SERVO_INTERVAL)
+  int pos = 45;
+  bool INC = true;
+
+  while (1)
   {
-    servo_previousMillis = servo_currentMillis;
-    if (SERVO_pos <= 45)
+    if (pos <= 45)
     {
-      SERVO_CLOCKWISE = true;
+      INC = true;
     }
-    else if (SERVO_pos >= 135)
+    if (pos >= 135)
     {
-      SERVO_CLOCKWISE = false;
+      INC = false;
     }
-    if (SERVO_CLOCKWISE)
+    if (INC)
     {
-      SERVO_pos += 10;
+      pos++;
     }
     else
     {
-      SERVO_pos -= 10;
+      pos--;
     }
-
-    servo.write(SERVO_pos);
+    writeToSlave(REG_TARGET_POS, pos);
+    // Serial.println("POS: " + (String)requestFromSlave(REG_CURRENT_POS));
+    delay(5);
   }
+
+  // while(1){
+  //   byte error, address;
+  // int nDevices;
+
+  // Serial.println("Scanning...");
+
+  // nDevices = 0;
+  // for(address = 1; address < 127; address++ )
+  // {
+  //   // The i2c_scanner uses the return value of
+  //   // the Write.endTransmisstion to see if
+  //   // a device did acknowledge to the address.
+  //   Wire.beginTransmission(address);
+  //   error = Wire.endTransmission();
+
+  //   if (error == 0)
+  //   {
+  //     Serial.print("I2C device found at address 0x");
+  //     if (address<16)
+  //       Serial.print("0");
+  //     Serial.print(address,HEX);
+  //     Serial.println("  !");
+
+  //     nDevices++;
+  //   }
+  //   else if (error==4)
+  //   {
+  //     Serial.print("Unknown error at address 0x");
+  //     if (address<16)
+  //       Serial.print("0");
+  //     Serial.println(address,HEX);
+  //   }
+  // }
+  // if (nDevices == 0)
+  //   Serial.println("No I2C devices found\n");
+  // else
+  //   Serial.println("done\n");
+
+  // delay(5000);           // wait 5 seconds for next scan
+  // }
+}
+
+void writeToSlave(uint8_t regAddress, uint8_t data)
+{
+  I2CB.beginTransmission(slave_ADDR);
+  I2CB.write(regAddress); // Register address
+  I2CB.write(data);
+  I2CB.endTransmission();
+}
+
+uint8_t requestFromSlave(uint8_t regAddress)
+{
+  I2CB.beginTransmission(slave_ADDR);
+  I2CB.write(regAddress);
+  I2CB.endTransmission();
+
+  I2CB.requestFrom(slave_ADDR, sizeof(uint8_t), false);
+  // uint8_t temp = 0;
+  while (!I2CB.available())
+    ;
+  String received = I2CB.readString();
+
+  int temp = received.toInt();
+  return temp;
+}
+
+
+void setup_I2C(){
+  I2CA.begin(I2CA_SDA,I2CA_SCL, 100000);
+  I2CB.begin(I2CA_SDA,I2CB_SCL, 100000);
+
 }
