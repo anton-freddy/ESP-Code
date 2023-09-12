@@ -215,8 +215,8 @@ void EasyRobot::moveSteppers()
   update_stepper_DIR_pin();
 
   // L_step_time = (steps_per_mm * leftWheelSpeed) / 1000000;
-  L_step_time = 1000000 / (steps_per_mm * leftWheelSpeed);
-  R_step_time = 1000000 / (steps_per_mm * rightWheelSpeed);
+  L_step_time = (1000000 / (steps_per_mm * leftWheelSpeed));
+  R_step_time = (1000000 / (steps_per_mm * rightWheelSpeed));
   // R_step_time = (steps_per_mm * rightWheelSpeed) / 1000000;
 
   if (L_STEP_MOVING)
@@ -298,22 +298,12 @@ void EasyRobot::R_setSpeed_MMPS(float MMPS)
     R_direction = -1;
   }
 }
-void EasyRobot::setAcceleration_SPSPS(long SPSPS)
-{
-}
 
-float EasyRobot::L_getCurrentPos_CM(void)
-{
-  return L_Current_POS_MM; // / steps_per_mm;
-}
 float EasyRobot::L_getCurrentSpeed_MMS(void)
 {
   return leftWheelSpeed;
 }
-float EasyRobot::R_getCurrentPos_CM(void)
-{
-  return R_Current_POS_MM; // / steps_per_mm;
-}
+
 float EasyRobot::R_getCurrentSpeed_MMS(void)
 {
   return rightWheelSpeed;
@@ -393,8 +383,8 @@ void EasyRobot::updatePose()
 
   // Read encoder values
 
-  float L_delta_theta = -1* (L_ENC_READ - L_ENC_PREVIOUS);
-  float R_delta_theta = -1* (R_ENC_READ - R_ENC_PREVIOUS);
+  float L_delta_theta = -1 * (L_ENC_READ - L_ENC_PREVIOUS);
+  float R_delta_theta = -1 * (R_ENC_READ - R_ENC_PREVIOUS);
   L_ENC_PREVIOUS = L_ENC_READ;
   R_ENC_PREVIOUS = R_ENC_READ;
   // Calculate the change in angle accounting for overflow
@@ -458,7 +448,6 @@ void EasyRobot::updatePose()
     Serial.println(ArrayLine);
     // Serial.println("L: " + (String)L_delta_theta);
     // Serial.println("R: " + (String)R_delta_theta);
-
   }
 }
 
@@ -707,37 +696,22 @@ void EasyRobot::setSpeedInMMS(float speed)
   R_setSpeed_MMPS(speed);
 }
 
-// Sets the speed of the robot in KM/h, !!NOTE!! you must set the steps per millimeter before setting the speed
-void EasyRobot::setAccelerationInKMHH(float speed)
-{
-  setAccelerationInMMSS(speed * 0.2778);
-}
-
-// Sets the speed of the robot in mm/s, !!NOTE!! you must set the steps per millimeter before setting the speed
-void EasyRobot::setAccelerationInMMSS(float speed)
-{
-
-  // leftMotor.setAccelerationInMillimetersPerSecondPerSecond(speed);
-  // rightMotor.setAccelerationInMillimetersPerSecondPerSecond(speed);
-  setAcceleration_SPSPS(steps_per_mm * speed);
-}
-
 //--  Public Functions ----------------------------------------
 
 // Initialize the robot, for unit pick either KMH or MMS
-void EasyRobot::begin(unit speed_units, float speed, float Acceleration)
+void EasyRobot::begin(unit speed_units, float speed)
 {
 
-  if (speed_units == 1)
+  if (speed_units == KMH)
   {
     setSpeedInKMH(speed);
     defaultSpeed_MMS = speed * 277.7777777778;
-    setAccelerationInKMHH(Acceleration);
+    Serial.println(defaultSpeed_MMS);
+    Serial.println(leftWheelSpeed);
   }
   else
   {
     setSpeedInMMS(speed);
-    setAccelerationInMMSS(Acceleration);
     defaultSpeed_MMS = speed;
   }
 
@@ -774,7 +748,7 @@ void EasyRobot::setUpMotors(byte leftMotorStepPin, byte leftMotorDirPin, byte le
   digitalWrite(L_D_pin, LOW);
   digitalWrite(L_E_pin, LOW);
 
-  R_S_pin = 17;//rightMotorStepPin;
+  R_S_pin = 17; // rightMotorStepPin;
   R_D_pin = rightMotorDirPin;
   R_E_pin = rightMotorEnablePin;
   pinMode(R_S_pin, OUTPUT);
@@ -785,8 +759,8 @@ void EasyRobot::setUpMotors(byte leftMotorStepPin, byte leftMotorDirPin, byte le
   digitalWrite(R_E_pin, LOW);
 
   pinMode(MS1_pin, OUTPUT);
-    pinMode(MS2_pin, OUTPUT);
-    pinMode(MS3_pin, OUTPUT);
+  pinMode(MS2_pin, OUTPUT);
+  pinMode(MS3_pin, OUTPUT);
 
   if (MS1_pin != 0 && MS2_pin != 0 && MS3_pin != 0)
   {
@@ -832,7 +806,6 @@ void EasyRobot::setUpMotors(byte leftMotorStepPin, byte leftMotorDirPin, byte le
     }
     break;
     }
-    
   }
 
   Serial.println("MOTOR SETUP COMPLETE");
@@ -1257,7 +1230,7 @@ void EasyRobot::insertMoveBeforeCurrent(float x, float y)
   }
 }
 
-void EasyRobot::executeMoves()
+bool EasyRobot::executeMoves()
 {
   if (head != nullptr)
   {
@@ -1266,7 +1239,22 @@ void EasyRobot::executeMoves()
 
     head = current->next;
     delete current; // Free memory for the completed move
+    return false;
   }
+
+  return true;
+}
+
+void EasyRobot::clearMoves()
+{
+  while (head != nullptr)
+  {
+    Move *current = head;
+    head = current->next;
+    delete current; // Free memory for the removed move
+  }
+  head = nullptr; // Reset the head pointer to nullptr since the list is empty
+  tail = nullptr; // Reset the tail pointer to nullptr since the list is empty
 }
 
 void EasyRobot::loop()
@@ -1275,23 +1263,38 @@ void EasyRobot::loop()
   updatePose();
   switch (movementState)
   {
-  case IDLE:{
-    executeMoves();
+  case IDLE:
+  {
     setSpeedInMMS(defaultSpeed_MMS);
+    if (!executeMoves())
+    {
+
+      break;
+    }
+    if (obsticale_avoiding)
+    {
+      obsticale_avoiding = false;
+      target.a_pos = obsticale_prev_orientation;
+      movementState = TURN;
+      break;
+    }
+    movementState = RUNNING;
+    target.a_pos = getOrientation();
+
     Serial.println("IN IDLE");
   }
-    break;
+  break;
 
-  case BACK_OFF: {
+  case BACK_OFF:
+  {
     resumeStepper(both);
-    setSpeedInMMS(-1*defaultSpeed_MMS);
+    setSpeedInMMS(-1 * defaultSpeed_MMS);
     backOff_current_millis = millis();
-    if(backOff_current_millis >= backOff_previous_millis + 1000){
-      movementState = STRAIGHT;
+    if (backOff_current_millis >= backOff_previous_millis + 2000)
+    {
+      movementState = IDLE;
       stopStepper(both);
     }
-    
-
   }
   break;
   case TURN:
@@ -1346,7 +1349,6 @@ void EasyRobot::loop()
 
       float desiredTheta = calc_orientation(target.x_pos, target.y_pos);
       float angleDiff = get_delta_theta(desiredTheta);
-
       // Adjust wheel speeds to correct orientation error
       leftWheelSpeed += 0.1 * angleDiff;   // You can adjust this factor
       rightWheelSpeed += -0.1 * angleDiff; // You can adjust this factor
@@ -1357,6 +1359,17 @@ void EasyRobot::loop()
     }
     // Implement motor control logic here
     // Adjust motor speeds based on calculated speeds and desired movement
+  }
+  break;
+
+  case RUNNING:
+  {
+    resumeStepper(both);
+    float angleDiff = get_delta_theta(target.a_pos);
+    leftWheelSpeed += 0.1 * angleDiff;   // You can adjust this factor
+    rightWheelSpeed += -0.1 * angleDiff; // You can adjust this factor
+    L_setSpeed_MMPS(leftWheelSpeed);
+    R_setSpeed_MMPS(rightWheelSpeed);
   }
   break;
 

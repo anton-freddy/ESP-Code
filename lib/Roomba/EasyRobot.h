@@ -121,8 +121,8 @@ private:
   
   bool R_STEP_MOVING = false;
 
-  float leftWheelSpeed = 1000;
-  float rightWheelSpeed = 1000;
+  float leftWheelSpeed = 2000;
+  float rightWheelSpeed = 2000;
 
   //  Timing Variables  //------------
   unsigned long currentMillis_pos_update = 0;
@@ -197,6 +197,11 @@ volatile float R_Current_POS_MM = 0;
 
   float defaultSpeed_MMS = 0;
 
+  bool obsticale_avoiding = false;
+  float obsticale_prev_orientation;
+  float obsticale_xpos;
+  float obsticale_ypos;
+
  MoveState movementState = IDLE;
 
   void setSpeedInMMS(float speed);
@@ -207,7 +212,8 @@ volatile float R_Current_POS_MM = 0;
   //  Move Buffer   //-----------
   void enqueueMove(float x, float y);
   void insertMoveBeforeCurrent(float x, float y);
-  void executeMoves();
+  bool executeMoves();
+  void clearMoves();
 
   //  Positioning   //-----------
   void updatePose();
@@ -225,7 +231,7 @@ volatile float R_Current_POS_MM = 0;
   
   void followHeading(float heading, float speedMMS);
 
-  void begin(unit speed_units, float speed, float Acceleration);
+  void begin(unit speed_units, float speed);
   void setUpMotors(byte leftMotorStepPin, byte leftMotorDirPin, byte leftMotorEnablePin, byte rightMotorStepPin, byte rightMotorDirPin, byte rightMotorEnablePin, byte MS1Pin, byte MS2Pin, byte MS3Pin);
   void setUpMotors(byte leftMotorStepPin, byte leftMotorDirPin, byte leftMotorEnablePin, byte rightMotorStepPin, byte rightMotorDirPin, byte rightMotorEnablePin);
   void setUpEncoders();
