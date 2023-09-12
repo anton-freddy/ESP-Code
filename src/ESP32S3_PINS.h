@@ -80,3 +80,26 @@ const int MOSI_PIN = 11;
 const int SPI_SCK_PIN = 12;
 
 
+float map_f(float x, float in_min, float in_max, float out_min, float out_max) {
+    const float run = in_max - in_min;
+    if(run == 0){
+        log_e("map(): Invalid input range, min == max");
+        return -1; // AVR returns -1, SAM returns 0
+    }
+    const float rise = out_max - out_min;
+    const float delta = x - in_min;
+    return (delta * rise) / run + out_min;
+}
+
+void float_to_ints(float floatValue, int &integerPart, int &decimalPart)
+{
+  // Split the float into integer and decimal parts
+  integerPart = int(floatValue);
+  decimalPart = int((floatValue - integerPart) * 1000); // Multiply by 1000 to get 3 decimal places
+}
+
+float ints_to_float(int integerPart, int decimalPart)
+{
+  // Reconstruct the float from integer and decimal parts
+  return float(integerPart) + float(decimalPart) / 1000.0; // Divide by 1000 to restore the decimal places
+}

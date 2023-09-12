@@ -5,14 +5,16 @@
 
 enum RegisterAddress
 {
-  REG_TARGET_POS = 0x01,
-  REG_CURRENT_POS = 0x02,
-  REG_ELAPSED_TIME = 0x03
+  REG_SERVO_POS = 0x01,
+  REG_CHARGE_LEVEL = 0x02,
+  REG_XPOS = 0x03,
+  REG_YPOS = 0x04,
+  REG_APOS = 0x05
 };
 
 TFLI2C LiDAR;
 void setup_LiDAR();
-void setup_I2C();
+bool setup_I2C();
 int16_t get_LiDAR_reading(int LiDAR_sel);
 
 void setup_IR();
@@ -20,16 +22,26 @@ bool get_IR1_status();
 bool get_IR2_status();
 void IR1_ISR();
 void IR2_ISR();
+int getBatteryLevel();
+void bump_ISR();
+void setBumpBackOFF();
 
+
+bool bump_triggred = false;
 Servo servo;
 bool SERVO_CLOCKWISE = true;
 int SERVO_pos = 0;
 long servo_previousMillis = 0;
 #define SERVO_INTERVAL 200
+bool is_I2C_setup = false;
 void setup_servo();
 void move_servo();
-void writeToSlave(uint8_t regAddress, uint8_t data);
-uint8_t requestFromSlave(uint8_t regAddress);
+
+int requestIntFromSlave(uint8_t regAddress);
+float requestFloatFromSlave(uint8_t regAddress);
+
+void writeIntToSlave(uint8_t regAddress, int data);
+void writeFloatToSlave(uint8_t regAddress, float data);
 
 EasyRobot ROOMBA(WHEEL_CIRCUMFERENCE, WHEEL_DISTANCE, MICROSTEP, STEPPER_STEP_COUNT, GEAR_RATIO);
 
@@ -42,17 +54,45 @@ long currentMillis = 0;
 void setup()
 {
   Serial.begin(115200);
-  setup_I2C();
+
+  is_I2C_setup = setup_I2C();
+
+  while (1)
+  {
+    writeIntToSlave(REG_SERVO_POS, 60);
+    delay(500);
+    Serial.println("POS: " + (String)requestIntFromSlave(REG_SERVO_POS));
+    delay(500);
+    writeIntToSlave(REG_SERVO_POS, 120);
+    delay(500);
+    Serial.println("POS: " + (String)requestIntFromSlave(REG_SERVO_POS));
+    delay(500);
+  }
+  
+
+
+
+  
+  ROOMBA.begin(KMH, 5, 1000); // 19.1525439
   ROOMBA.setUpMotors(L_Stepper_STEP_PIN, L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN, MS1_pin, MS2_pin, MS3_pin);
   ROOMBA.setUpEncoders();
-  // ROOMBA.begin(KMH, 3, 1000); // 19.1525439
+  pinMode(IR3_PIN, INPUT);
+  attachInterrupt(digitalPinToInterrupt(IR3_PIN), bump_ISR, RISING);
+  
   // setup_LiDAR();
+
+  // while(1){
+  //   Serial.println("LiDAR1: " + (String)get_LiDAR_reading(LiDAR_1));
+  //   delay(1000);
+  //   Serial.println("LiDAR2: " + (String)get_LiDAR_reading(LiDAR_2));
+  //   delay(1000);
+  // }
   // setup_IR();
-  setup_servo();
+  //setup_servo();
 
   Serial.println("END OF SETUP");
-  ROOMBA.enqueueMove(0, 1000);
-  ROOMBA.enqueueMove(0, 0);
+  ROOMBA.enqueueMove(0, 3000);
+  //ROOMBA.enqueueMove(0, 0);
 
   // ROOMBA.update_stepper_DIR_pin();
   //  while (1);
@@ -69,6 +109,10 @@ bool clockwise = false;
 //  Contorl Robot Movement
 void loop()
 {
+  if(bump_triggred){
+    setBumpBackOFF();
+    bump_triggred = false;
+  }
   // move_servo();
   ROOMBA.loop();
   // ROOMBA.followHeading(PI, 5000);
@@ -108,7 +152,10 @@ void loop()
 
 void setup_LiDAR()
 {
-  I2CA.begin(I2CA_SDA, I2CA_SCL);
+  if(!is_I2C_setup){
+    I2CA.begin(I2CA_SDA, I2CA_SCL);
+  }
+  
   while (bool flag = false)
   {
     if (LiDAR.Set_Frame_Rate(LiDAR_frame_rate, LiDAR_ADD_1))
@@ -325,7 +372,7 @@ void setup_servo()
     {
       pos--;
     }
-    writeToSlave(REG_TARGET_POS, pos);
+  
     // Serial.println("POS: " + (String)requestFromSlave(REG_CURRENT_POS));
     delay(5);
   }
@@ -380,25 +427,78 @@ void writeToSlave(uint8_t regAddress, uint8_t data)
   I2CB.endTransmission();
 }
 
-uint8_t requestFromSlave(uint8_t regAddress)
-{
+void writeIntToSlave(uint8_t regAddress, int data){
+  uint8_t temp = data;
+  I2CB.beginTransmission(slave_ADDR);
+  I2CB.write(&regAddress, sizeof(uint8_t));
+  I2CB.write(&temp, sizeof(uint8_t));
+  I2CB.endTransmission();
+}
+void writeFloatToSlave(uint8_t regAddress, float data){
+  int num, dec;
+  float_to_ints(data, num, dec);
+  uint8_t temp1 = num;
+  uint8_t temp2 = dec;
   I2CB.beginTransmission(slave_ADDR);
   I2CB.write(regAddress);
+  I2CB.write(&temp1, sizeof(uint8_t));
+  I2CB.write(&temp2, sizeof(uint8_t));
+  I2CB.endTransmission();
+}
+
+int requestIntFromSlave(uint8_t regAddress)
+{
+  I2CB.beginTransmission(slave_ADDR);
+  I2CB.write(&regAddress, sizeof(uint8_t));
   I2CB.endTransmission();
 
-  I2CB.requestFrom(slave_ADDR, sizeof(uint8_t), false);
-  // uint8_t temp = 0;
-  while (!I2CB.available())
-    ;
-  String received = I2CB.readString();
+  I2CB.requestFrom(slave_ADDR, sizeof(uint8_t));
+  uint8_t read = 0;
+  I2CB.readBytes(&read, sizeof(uint8_t));
+  return read;
 
-  int temp = received.toInt();
-  return temp;
+}
+
+float requestFloatFromSlave(uint8_t regAddress)
+{
+  I2CB.beginTransmission(slave_ADDR);
+  I2CB.write(&regAddress, sizeof(uint8_t));
+  I2CB.endTransmission();
+
+  I2CB.requestFrom(slave_ADDR, 2* sizeof(uint8_t));
+  uint8_t num = 0;
+  uint8_t dec = 0;
+  I2CB.readBytes(&num, sizeof(uint8_t));
+  I2CB.readBytes(&dec, sizeof(uint8_t));
+
+  return ints_to_float(num, dec);
 }
 
 
-void setup_I2C(){
-  I2CA.begin(I2CA_SDA,I2CA_SCL, 100000);
-  I2CB.begin(I2CA_SDA,I2CB_SCL, 100000);
+bool setup_I2C(){
+  if(I2CA.begin(I2CA_SDA,I2CA_SCL, 100000) && I2CB.begin(I2CB_SDA,I2CB_SCL, 100000)){
+    return true;
 
+  }
+  else return false;
+}
+
+int getBatteryLevel(){
+  int analog = analogRead(IR4_PIN);
+  float voltage = map_f(analogRead(IR4_PIN),0,1023,0,3.3);
+  float volatge_12V = map_f(voltage,0,3.3,0,12);
+  float percentage = map_f(volatge_12V,9,12,0,100);
+
+  return (int)percentage;
+}
+
+void bump_ISR(){
+  bump_triggred = true;
+}
+
+void setBumpBackOFF(){
+  Serial.println("BUMP TRIGRRED");
+  ROOMBA.movementState = BACK_OFF;
+  ROOMBA.backOff_previous_millis = millis();
+  return;
 }

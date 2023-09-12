@@ -23,11 +23,11 @@ void EasyRobot::update_stepper_DIR_pin()
   switch (L_direction)
   {
   case 1:
-    digitalWrite(L_D_pin, LOW);
+    digitalWrite(L_D_pin, HIGH);
     break;
 
   case -1:
-    digitalWrite(L_D_pin, HIGH);
+    digitalWrite(L_D_pin, LOW);
     break;
 
   default:
@@ -254,11 +254,11 @@ void EasyRobot::L_setSpeed_SPS(long SPS)
 {
   if (SPS < 0)
   {
-    L_direction = -1;
+    L_direction = 1;
   }
   else
   {
-    L_direction = 1;
+    L_direction = -1;
   }
   L_Speed_SPS = SPS;
 }
@@ -266,11 +266,11 @@ void EasyRobot::R_setSpeed_SPS(long SPS)
 {
   if (SPS < 0)
   {
-    R_direction = -1;
+    R_direction = 1;
   }
   else
   {
-    R_direction = 1;
+    R_direction = -1;
   }
   R_Speed_SPS = SPS;
 }
@@ -322,26 +322,28 @@ float EasyRobot::R_getCurrentSpeed_MMS(void)
 void EasyRobot::L_setTarget_POS(float Target_MM)
 {
   L_Target_POS_MM = Target_MM;
+  L_setSpeed_MMPS(defaultSpeed_MMS);
   if (Target_MM < 0)
   {
-    L_direction = -1;
+    L_direction = 1;
   }
   else
   {
-    L_direction = 1;
+    L_direction = -1;
   }
 }
 
 void EasyRobot::R_setTarget_POS(float Target_MM)
 {
   R_Target_POS_MM = Target_MM;
+  R_setSpeed_MMPS(defaultSpeed_MMS);
   if (Target_MM < 0)
   {
-    R_direction = -1;
+    R_direction = 1;
   }
   else
   {
-    R_direction = 1;
+    R_direction = -1;
   }
 }
 
@@ -391,8 +393,8 @@ void EasyRobot::updatePose()
 
   // Read encoder values
 
-  float L_delta_theta = L_ENC_READ - L_ENC_PREVIOUS;
-  float R_delta_theta = R_ENC_READ - R_ENC_PREVIOUS;
+  float L_delta_theta = -1* (L_ENC_READ - L_ENC_PREVIOUS);
+  float R_delta_theta = -1* (R_ENC_READ - R_ENC_PREVIOUS);
   L_ENC_PREVIOUS = L_ENC_READ;
   R_ENC_PREVIOUS = R_ENC_READ;
   // Calculate the change in angle accounting for overflow
@@ -446,7 +448,7 @@ void EasyRobot::updatePose()
   // Serial.println("delta Y: " + (String)(linearVel * sin(getOrientation()) * elapsedTime));
 
   unsigned long currentMillis = millis();
-  if (currentMillis > previousMillis___POSE + 100)
+  if (currentMillis > previousMillis___POSE + 1000)
   {
     previousMillis___POSE = currentMillis;
     String ArrayLine;
@@ -454,6 +456,9 @@ void EasyRobot::updatePose()
     ArrayLine += "X: " + (String)getXCoordinate() + " Y: " + (String)getYCoordinate() + " A: " + (String)getOrientation();
     // ArrayLine += "\nLeft Step Time: " + (String)L_step_time + " Right Step Time: " + (String)R_step_time;
     Serial.println(ArrayLine);
+    // Serial.println("L: " + (String)L_delta_theta);
+    // Serial.println("R: " + (String)R_delta_theta);
+
   }
 }
 
@@ -769,7 +774,7 @@ void EasyRobot::setUpMotors(byte leftMotorStepPin, byte leftMotorDirPin, byte le
   digitalWrite(L_D_pin, LOW);
   digitalWrite(L_E_pin, LOW);
 
-  R_S_pin = rightMotorStepPin;
+  R_S_pin = 17;//rightMotorStepPin;
   R_D_pin = rightMotorDirPin;
   R_E_pin = rightMotorEnablePin;
   pinMode(R_S_pin, OUTPUT);
@@ -778,6 +783,10 @@ void EasyRobot::setUpMotors(byte leftMotorStepPin, byte leftMotorDirPin, byte le
   digitalWrite(R_S_pin, LOW);
   digitalWrite(R_D_pin, LOW);
   digitalWrite(R_E_pin, LOW);
+
+  pinMode(MS1_pin, OUTPUT);
+    pinMode(MS2_pin, OUTPUT);
+    pinMode(MS3_pin, OUTPUT);
 
   if (MS1_pin != 0 && MS2_pin != 0 && MS3_pin != 0)
   {
@@ -823,9 +832,7 @@ void EasyRobot::setUpMotors(byte leftMotorStepPin, byte leftMotorDirPin, byte le
     }
     break;
     }
-    pinMode(MS1_pin, OUTPUT);
-    pinMode(MS2_pin, OUTPUT);
-    pinMode(MS3_pin, OUTPUT);
+    
   }
 
   Serial.println("MOTOR SETUP COMPLETE");
@@ -1268,13 +1275,25 @@ void EasyRobot::loop()
   updatePose();
   switch (movementState)
   {
-  case IDLE:
+  case IDLE:{
     executeMoves();
     setSpeedInMMS(defaultSpeed_MMS);
     Serial.println("IN IDLE");
-
+  }
     break;
 
+  case BACK_OFF: {
+    resumeStepper(both);
+    setSpeedInMMS(-1*defaultSpeed_MMS);
+    backOff_current_millis = millis();
+    if(backOff_current_millis >= backOff_previous_millis + 1000){
+      movementState = STRAIGHT;
+      stopStepper(both);
+    }
+    
+
+  }
+  break;
   case TURN:
   {
     int turningSpeed = defaultSpeed_MMS;

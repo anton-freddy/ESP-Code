@@ -21,7 +21,9 @@ enum MoveState
   TURN,
   STRAIGHT,
   BACK,
-  ERROR
+  ERROR,
+  BACK_OFF,
+  RUNNING
 };
 
 enum unit
@@ -63,7 +65,7 @@ class EasyRobot
 private:
   Move *head = nullptr;
   Move *tail = nullptr;
-  MoveState movementState = IDLE;
+  
 
   AMS_5600_Wire R_ENCODER;
   AMS_5600_Wire1 L_ENCODER;
@@ -81,7 +83,7 @@ private:
   byte MS2_pin = 0;
   byte MS3_pin = 0;
 
-  float defaultSpeed_MMS = 0;
+  
   long acceleration;
   float wheel_circumfrence_mm;
   int steps_per_rev;
@@ -98,8 +100,6 @@ private:
   float targetX = 0.0;
   float targetY = 0.0;
 
-  volatile float L_Current_POS_MM = 0;
-  volatile float L_Target_POS_MM = 0;
   float L_ENC_PREVIOUS = 0;
   float L_ENC_TOTAL_REV = 0;
 
@@ -110,8 +110,6 @@ private:
   long L_step_time = 0;
   bool L_STEP_MOVING = false;
 
-  volatile float R_Current_POS_MM = 0;
-  volatile float R_Target_POS_MM = 0;
 
   float R_ENC_PREVIOUS = 0;
   float R_ENC_TOTAL_REV = 0;
@@ -134,6 +132,7 @@ private:
   unsigned long pose_previousTime = 0;
   unsigned long encoder_current_millis = 0;
   unsigned long encoder_previous_millis = 0;
+
 
   const float rotationConstant = 171.931 / 10; // 158.3;//160.49877; // Must be adjusted based on wheel distance and mounting points
 
@@ -170,7 +169,7 @@ private:
   bool L_stepper_target_reached();
   bool R_stepper_target_reached();
   void setSpeedInKMH(float speed);
-  void setSpeedInMMS(float speed);
+  
   void setAccelerationInKMHH(float speed);
   void setAccelerationInMMSS(float speed);
   void resumeStepper(motor select);
@@ -190,6 +189,19 @@ private:
 
 
 public:
+
+  volatile float L_Current_POS_MM = 0;
+ volatile float L_Target_POS_MM = 0;
+volatile float R_Current_POS_MM = 0;
+ volatile float R_Target_POS_MM = 0;
+
+  float defaultSpeed_MMS = 0;
+
+ MoveState movementState = IDLE;
+
+  void setSpeedInMMS(float speed);
+
+
   EasyRobot(float wheel_circumfrence, float wheel_distance, int MICRO_STEP, int STEPPER_STEP_COUNT, int GEAR_RATIO);
   void loop();
   //  Move Buffer   //-----------
@@ -247,4 +259,8 @@ public:
 
   bool add_move(float targetX, float targetY);
   bool add_move(float targetA);
+
+
+  unsigned long backOff_current_millis = 0;
+  unsigned long backOff_previous_millis = 0;
 };
