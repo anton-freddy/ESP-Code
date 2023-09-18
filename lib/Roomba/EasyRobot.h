@@ -7,6 +7,7 @@
 #include <AS5600_Wire1.h>
 #include <Wire.h>
 #include <ERROR.h>
+#include <MPU9250.h>
 //  Wheel Distance = OUTER: 311.6mm INNER: 281.6mm
 
 // void send_ERROR(int error_code);
@@ -190,6 +191,8 @@ private:
 
 public:
 
+  MPU9250 mpu;
+
   volatile float L_Current_POS_MM = 0;
  volatile float L_Target_POS_MM = 0;
 volatile float R_Current_POS_MM = 0;
@@ -227,6 +230,8 @@ volatile float R_Current_POS_MM = 0;
   void disableStepper(motor select);
 
   void UpdatePosFromEncoders(long refresh_rate);
+  void calibrateMPU();
+  void print_MPU_calibration();
 
   
   void followHeading(float heading, float speedMMS);

@@ -8,6 +8,8 @@
 #include <iostream>
 #include <Wire.h>
 #include <ERROR.h>
+#include <OTA-update.h>
+#include <Battery.h>
 
 #include <Esp.h>
 
@@ -15,6 +17,8 @@
 #include <EasyRobot.h>
 #include <TFLI2C.h>
 #include <ESP32Servo.h>
+#include <SPIFFS.h>
+
 
 const float WHEEL_CIRCUMFERENCE = 153.15; // 157.1; // Dia = 48.75
 const float WHEEL_DISTANCE = 311.6;       // 281.6; // OUTER: 311.6mm INNER: 281.6mm
@@ -68,6 +72,8 @@ const int BATTERY_LEVEL_PIN = 10;    // IR2 on board pinout
 const int C_BUMP_PIN = 38; // IR3 on board pinout
 const int R_IR_PIN = 39;    // IR4 on board pinout
 
+Battery batt(8000, 13000, BATTERY_LEVEL_PIN);//3041
+
 //  Limit Switches
 const int R_BUMP_PIN = 4; // LIM1 on board pinout
 const int L_BUMP_PIN = 5; // LIM2 on board pinout
@@ -119,13 +125,21 @@ float ints_to_float(int integerPart, int decimalPart)
 
 enum RegisterAddress
 {
-  REG_SERVO_POS = 0x01,
-  REG_CHARGE_LEVEL = 0x02,
-  REG_XPOS = 0x03,
-  REG_YPOS = 0x04,
-  REG_APOS = 0x05,
-  REG_DCL = 0x06,
-  REG_DCR = 0x07
+    REG_SERVO_POS,
+    REG_SERVO_STATE,
+    REG_CHARGE_LEVEL,
+    REG_XPOS,
+    REG_YPOS,
+    REG_APOS,
+    REG_DCL,
+    REG_DCR
+};
+
+enum ServoState
+{
+    CENTER = 0,
+    RUN = 1,
+    PAUSE = 2
 };
 
 TFLI2C LiDAR;
@@ -138,8 +152,11 @@ bool get_IR1_status();
 bool get_IR2_status();
 void IR1_ISR();
 void IR2_ISR();
+void setupBatterySense();
 int getBatteryLevel();
-void bump_ISR();
+void bump_ISR_C();
+void bump_ISR_L();
+void bump_ISR_R();
 void setupBumpers();
 void setBumpBackOFF();
 void tickServo();

@@ -842,6 +842,16 @@ void EasyRobot::setUpEncoders()
   resetEncoders(both);
 
   Serial.println("ENCODER SETUP COMPLETE");
+
+  if (!mpu.setup(0x68))
+  { // change to your own address
+
+      Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
+      delay(1000);
+
+  } else{
+    Serial.println("MPU setup success");
+  }
 }
 
 void EasyRobot::resetEncoders(motor selector)
@@ -1379,4 +1389,56 @@ void EasyRobot::loop()
   }
   break;
   }
+}
+
+void EasyRobot::calibrateMPU()
+{
+  // delay(5000);
+
+  // // calibrate anytime you want to
+  // Serial.println("Accel Gyro calibration will start in 5sec.");
+  // Serial.println("Please leave the device still on the flat plane.");
+  // mpu.verbose(true);
+  // delay(5000);
+  // mpu.calibrateAccelGyro();
+  //mpu.setMagneticDeclination(20.11);
+  Serial.println("Please move in a figure of eight while mag calibartes");
+  delay(2000);
+  mpu.calibrateMag();
+
+  print_MPU_calibration();
+  mpu.verbose(false);
+}
+
+void EasyRobot::print_MPU_calibration()
+{
+  Serial.println("< calibration parameters >");
+  Serial.println("accel bias [g]: ");
+  Serial.print(mpu.getAccBiasX() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+  Serial.print(", ");
+  Serial.print(mpu.getAccBiasY() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+  Serial.print(", ");
+  Serial.print(mpu.getAccBiasZ() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+  Serial.println();
+  Serial.println("gyro bias [deg/s]: ");
+  Serial.print(mpu.getGyroBiasX() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+  Serial.print(", ");
+  Serial.print(mpu.getGyroBiasY() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+  Serial.print(", ");
+  Serial.print(mpu.getGyroBiasZ() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+  Serial.println();
+  Serial.println("mag bias [mG]: ");
+  Serial.print(mpu.getMagBiasX());
+  Serial.print(", ");
+  Serial.print(mpu.getMagBiasY());
+  Serial.print(", ");
+  Serial.print(mpu.getMagBiasZ());
+  Serial.println();
+  Serial.println("mag scale []: ");
+  Serial.print(mpu.getMagScaleX());
+  Serial.print(", ");
+  Serial.print(mpu.getMagScaleY());
+  Serial.print(", ");
+  Serial.print(mpu.getMagScaleZ());
+  Serial.println();
 }

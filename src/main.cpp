@@ -13,29 +13,31 @@ long currentMillis = 0;
 void setup()
 {
   Serial.begin(115200);
+  OTA_setup();
+  setupBatterySense();
+  // if(!SPIFFS.begin(true)){
+  //   Serial.println("Couldnt create file system");
+  // }
+  // if(!SPIFFS.format()){
+  //   Serial.println("Couldn't format file system");
+  // }
 
   is_I2C_setup = setup_I2C();
 
-  ROOMBA.setUpMotors(L_Stepper_STEP_PIN, L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN, MS1_pin, MS2_pin, MS3_pin);
-  ROOMBA.setUpEncoders();
-  ROOMBA.begin(KMH, 10); // 19.1525439
+  // ROOMBA.setUpMotors(L_Stepper_STEP_PIN, L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN, MS1_pin, MS2_pin, MS3_pin);
+  // ROOMBA.setUpEncoders();
+  // ROOMBA.begin(KMH, 10); // 19.1525439
+  pinMode(LiDAR_3_signal, OUTPUT);
+  digitalWrite(LiDAR_3_signal, HIGH);
 
   setupBumpers();
-  // setup_LiDAR();
+
+  
+  setup_LiDAR();
 
   // setup_IR();
   // setup_servo();
 
-  Serial.println("END OF SETUP");
-  // ROOMBA.enqueueMove(0, 3000);
-  //  ROOMBA.enqueueMove(0, 0);
-
-  // ROOMBA.update_stepper_DIR_pin();
-  //  while (1);
-
-  // ROOMBA.setUpMove(1000,1000);
-
-  // ROOMBA.moveTo(1000,1000);
 
   delay(1000);
   // while(1);
@@ -49,43 +51,11 @@ void loop()
   {
     setBumpBackOFF();
     bump_triggred = false;
+    Serial.println("Triggred");
   }
-  //tickServo();
-  // move_servo();
-  ROOMBA.loop();
-  // ROOMBA.followHeading(PI, 5000);
 
-  // loop1_currentMillis = millis();
-  // if(loop1_currentMillis - loop1_previousMillis >= 50){
-  //   loop1_previousMillis = loop1_currentMillis;
-  //   ROOMBA.updatePose();
-  // }
-
-  // currentMillis = millis();
-  // if (currentMillis > previousMillis + 100)
-  // {
-  //   previousMillis = currentMillis;
-  //   String ArrayLine;
-  //   ArrayLine = (String)millis() + "\t";
-  //   ArrayLine += "X: " + (String)ROOMBA.getXCoordinate() + " Y: " + (String) ROOMBA.getYCoordinate() + " A: " + (String)ROOMBA.getOrientation();
-  //   Serial.println(ArrayLine);
-  // }
-  // ROOMBA.UpdatePosFromEncoders(1);
-  // currentMillis = millis();
-  // if (currentMillis > previousMillis + 100)
-  // {
-  //   previousMillis = currentMillis;
-  //   String ArrayLine;
-  //   ArrayLine = (String)millis() + "\t";
-  //   ArrayLine += "Lidar 1: " + (String)get_LiDAR_reading(LiDAR_1) + ", LiDAR 2: " + (String)get_LiDAR_reading(LiDAR_2) + ", Servo A: " + (String)SERVO_pos + "\t";
-  //   ArrayLine += "L_ENC: " + (String)ROOMBA.L_getCurrentPos_CM() + ", R_ENC: " + (String)ROOMBA.R_getCurrentPos_CM();
-  //   Serial.println(ArrayLine);
-  // }
-
-  // // if (!ROOMBA.motionComplete())
-  // // {
-  // //   ROOMBA.processMovement();
-  // // }
+  Serial.println("LiDAR: " + (String)get_LiDAR_reading(LiDAR_2));
+  delay(1000);
 }
 
 void setup_LiDAR()
@@ -315,7 +285,7 @@ void writeFloatToSlave(uint8_t regAddress, float data)
   uint8_t temp1 = num;
   uint8_t temp2 = dec;
   I2CB.beginTransmission(slave_ADDR);
-  I2CB.write(regAddress);
+  I2CB.write(&regAddress, sizeof(uint8_t));
   I2CB.write(&temp1, sizeof(uint8_t));
   I2CB.write(&temp2, sizeof(uint8_t));
   I2CB.endTransmission();
@@ -358,14 +328,6 @@ bool setup_I2C()
     return false;
 }
 
-int getBatteryLevel()
-{
-  int analog = analogRead(BATTERY_LEVEL_PIN);
-  float voltage = map_f(analog, 0, 4095, 0, 12.5);
-  float voltage_12V = map_f(voltage, 0, 3.3, 0, 12);
-  float percentage = map_f(voltage, 9, 12.5, 0, 100);
-  return (int)percentage;
-}
 
 void bump_ISR()
 {
@@ -411,11 +373,11 @@ void setBumpBackOFF()
 void setupBumpers()
 {
   pinMode(C_BUMP_PIN, INPUT);
-  pinMode(R_BUMP_PIN, INPUT);
-  pinMode(L_BUMP_PIN, INPUT);
-  attachInterrupt(C_BUMP_PIN, bump_ISR, RISING);
-  // attachInterrupt(R_BUMP_PIN, bump_ISR, HIGH);
-  // attachInterrupt(L_BUMP_PIN, bump_ISR, HIGH);
+  pinMode(R_BUMP_PIN, INPUT_PULLUP);
+  pinMode(L_BUMP_PIN, INPUT_PULLUP);
+  attachInterrupt(C_BUMP_PIN, bump_ISR, HIGH);
+  attachInterrupt(R_BUMP_PIN, bump_ISR, HIGH);
+  attachInterrupt(L_BUMP_PIN, bump_ISR, HIGH);
 }
 
 void tickServo()
@@ -434,4 +396,8 @@ void tickServo()
     servo_pos += servo_increment;
     writeIntToSlave(REG_SERVO_POS, servo_pos);
   }
+}
+
+void setupBatterySense(){
+  batt.begin(3300, 3.939, &linear);
 }
