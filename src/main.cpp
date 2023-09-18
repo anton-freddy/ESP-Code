@@ -4,6 +4,9 @@
 
 EasyRobot ROOMBA(WHEEL_CIRCUMFERENCE, WHEEL_DISTANCE, MICROSTEP, STEPPER_STEP_COUNT, GEAR_RATIO);
 
+TF_LUNA LiDAR1(LiDAR_ADD_1, LiDAR_frame_rate, LiDAR_1);
+TF_LUNA LiDAR2(LiDAR_ADD_2, LiDAR_frame_rate, LiDAR_1);
+
 int loop1_previousMillis = 0;
 int loop1_currentMillis = 0;
 
@@ -13,31 +16,27 @@ long currentMillis = 0;
 void setup()
 {
   Serial.begin(115200);
-  OTA_setup();
+  web_setup();
+  is_I2C_setup = setup_I2C();
   setupBatterySense();
+  LiDAR1.begin();
+  LiDAR2.begin();
   // if(!SPIFFS.begin(true)){
   //   Serial.println("Couldnt create file system");
-  // }
+  // }4
   // if(!SPIFFS.format()){
   //   Serial.println("Couldn't format file system");
   // }
 
-  is_I2C_setup = setup_I2C();
-
   // ROOMBA.setUpMotors(L_Stepper_STEP_PIN, L_Stepper_DIR_PIN, L_Stepper_ENABLE_PIN, R_Stepper_STEP_PIN, R_Stepper_DIR_PIN, R_Stepper_ENABLE_PIN, MS1_pin, MS2_pin, MS3_pin);
-  // ROOMBA.setUpEncoders();
+  // //ROOMBA.setUpEncoders();
   // ROOMBA.begin(KMH, 10); // 19.1525439
   pinMode(LiDAR_3_signal, OUTPUT);
-  digitalWrite(LiDAR_3_signal, HIGH);
 
   setupBumpers();
-
-  
-  setup_LiDAR();
-
+  server_var.motor_on = 0;
   // setup_IR();
   // setup_servo();
-
 
   delay(1000);
   // while(1);
@@ -45,172 +44,63 @@ void setup()
 
 bool clockwise = false;
 //  Contorl Robot Movement
+
+unsigned long prevMillisBump = 0;
+
+bool bump = false;
+int bump_timeout = 0;
 void loop()
 {
+  bump_timeout++;
   if (bump_triggred)
   {
     setBumpBackOFF();
     bump_triggred = false;
-    Serial.println("Triggred");
+    bump_timeout = 0;
+    bump = true;
   }
 
-  Serial.println("LiDAR: " + (String)get_LiDAR_reading(LiDAR_2));
-  delay(1000);
-}
-
-void setup_LiDAR()
-{
-  if (!is_I2C_setup)
+  if (millis() - prevMillisBump >= 200)
   {
-    I2CA.begin(I2CA_SDA, I2CA_SCL);
-  }
-
-#ifdef ENABLE_LiDAR1
-
-  while (bool flag = false)
-  {
-    if (LiDAR.Set_Frame_Rate(LiDAR_frame_rate, LiDAR_ADD_1))
+    prevMillisBump = millis();
+    if (bump)
     {
-
-      flag = true;
+      card_bump_state.update("ACTIVE");
+      if (bump_timeout > 1000)
+      {
+        bump = false;
+      }
     }
     else
     {
-      send_ERROR(LiDAR_1, 0x00);
-      break;
+      card_bump_state.update("IDLE");
     }
-  }
 
-  while (bool flag = false)
-  {
-    if (LiDAR.Set_Trig_Mode(LiDAR_ADD_1))
+    card_lidar_1.update(LiDAR1.getDistance());
+    card_lidar_2.update(LiDAR2.getDistance());
+    card_charge_level.update(batt.level());
+    dashboard.sendUpdates();
+
+    if (server_var.led_on)
     {
-
-      flag = true;
+      digitalWrite(LiDAR_3_signal, HIGH);
     }
     else
     {
-      send_ERROR(LiDAR_1, 0x01);
-      break;
+      digitalWrite(LiDAR_3_signal, LOW);
     }
   }
-#endif
 
-#ifdef ENABLE_LiDAR2
-
-  while (bool flag = false)
+  if (server_var.motor_on)
   {
-    if (LiDAR.Set_Frame_Rate(LiDAR_frame_rate, LiDAR_ADD_2))
-    {
-      flag = true;
-    }
-    else
-    {
-      send_ERROR(LiDAR_2, 0x00);
-      break;
-    }
-  }
-  while (bool flag = false)
-  {
-    if (LiDAR.Set_Trig_Mode(LiDAR_ADD_2))
-    {
-
-      flag = true;
-    }
-    else
-    {
-      send_ERROR(LiDAR_2, 0x01);
-      break;
-    }
-  }
-#endif
-
-#ifdef ENABLE_LiDAR3
-
-  while (bool flag = false)
-  {
-    if (LiDAR.Set_Frame_Rate(LiDAR_frame_rate, LiDAR_ADD_3))
-    {
-      flag = true;
-    }
-    else
-    {
-      send_ERROR(LiDAR_3, 0x00);
-      break;
-    }
-  }
-  while (bool flag = false)
-  {
-    if (LiDAR.Set_Trig_Mode(LiDAR_ADD_3))
-    {
-
-      flag = true;
-    }
-    else
-    {
-      send_ERROR(LiDAR_3, 0x01);
-      break;
-    }
-  }
-#endif
-
-  Serial.println("LiDAR SETUP COMPLETE");
-}
-
-int16_t get_LiDAR_reading(int LiDAR_sel)
-{
-  int16_t LiDAR_ADDR;
-  switch (LiDAR_sel)
-  {
-  case LiDAR_1:
-    LiDAR_ADDR = LiDAR_ADD_1;
-    break;
-
-  case LiDAR_2:
-    LiDAR_ADDR = LiDAR_ADD_2;
-    break;
-
-  case LiDAR_3:
-    LiDAR_ADDR = LiDAR_ADD_3;
-    break;
-  default:
-    break;
-  }
-  int16_t temp;
-
-  // LiDAR.getData(temp, LiDAR_ADDR);
-  // return temp;
-  int i = 0;
-  while (i < 10)
-  {
-    if (LiDAR.Set_Trigger(LiDAR_ADDR))
-    {
-      break;
-    }
-    i++;
-  }
-  if (i == 10)
-  {
-    send_ERROR(LiDAR_sel, 0x02);
-    return 0;
+    ROOMBA.movementState = RUNNING;
   }
   else
   {
-    i = 0;
-    while (i < 10)
-    {
-      if (LiDAR.getData(temp, LiDAR_ADDR))
-      {
-        return temp;
-      }
-      i++;
-    }
-    if (i == 10)
-    {
-      send_ERROR(LiDAR_sel, 0x03);
-      return 0;
-    }
+    ROOMBA.movementState = WAIT;
   }
+
+  //ROOMBA.loop();
 }
 
 void setup_IR()
@@ -328,7 +218,6 @@ bool setup_I2C()
     return false;
 }
 
-
 void bump_ISR()
 {
   bump_triggred = true;
@@ -347,14 +236,14 @@ void setBumpBackOFF()
   int numWaypoints = int(arcLength / 50);
   float angleIncrement = PI / numWaypoints;
   float orientation = ROOMBA.getOrientation();
-  for (int i = numWaypoints/2; i < numWaypoints; i++)
+  for (int i = numWaypoints / 2; i < numWaypoints; i++)
   {
 
     float deltaX = obstciale_radius * cos(orientation); // Calculate new x-coordinate increment
     float deltaY = obstciale_radius * sin(orientation); // Calculate new y-coordinate increment
     ROOMBA.enqueueMove(deltaX, deltaY);
 
-        orientation += angleIncrement;
+    orientation += angleIncrement;
     // Handle orientation overflow
     if (orientation > 2 * PI)
     {
@@ -364,7 +253,6 @@ void setBumpBackOFF()
     {
       orientation += 2 * PI;
     }
-
   }
   ROOMBA.backOff_previous_millis = millis();
   return;
@@ -398,6 +286,7 @@ void tickServo()
   }
 }
 
-void setupBatterySense(){
+void setupBatterySense()
+{
   batt.begin(3300, 3.939, &linear);
 }

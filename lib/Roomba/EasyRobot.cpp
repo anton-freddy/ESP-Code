@@ -843,15 +843,15 @@ void EasyRobot::setUpEncoders()
 
   Serial.println("ENCODER SETUP COMPLETE");
 
-  if (!mpu.setup(0x68))
-  { // change to your own address
+  // if (!mpu.setup(0x68))
+  // { // change to your own address
 
-      Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
-      delay(1000);
+  //     Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
+  //     delay(1000);
 
-  } else{
-    Serial.println("MPU setup success");
-  }
+  // } else{
+  //   Serial.println("MPU setup success");
+  // }
 }
 
 void EasyRobot::resetEncoders(motor selector)
@@ -1380,6 +1380,12 @@ void EasyRobot::loop()
     rightWheelSpeed += -0.1 * angleDiff; // You can adjust this factor
     L_setSpeed_MMPS(leftWheelSpeed);
     R_setSpeed_MMPS(rightWheelSpeed);
+  }
+  break;
+
+  case WAIT:
+  {
+    stopStepper(both);
   }
   break;
 

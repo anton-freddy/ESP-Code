@@ -8,16 +8,16 @@
 #include <iostream>
 #include <Wire.h>
 #include <ERROR.h>
-#include <OTA-update.h>
+#include <web_connection.h>
 #include <Battery.h>
 
 #include <Esp.h>
 
 // Libaries
 #include <EasyRobot.h>
-#include <TFLI2C.h>
 #include <ESP32Servo.h>
 #include <SPIFFS.h>
+#include <LiDAR.h>
 
 
 const float WHEEL_CIRCUMFERENCE = 153.15; // 157.1; // Dia = 48.75
@@ -142,11 +142,7 @@ enum ServoState
     PAUSE = 2
 };
 
-TFLI2C LiDAR;
-void setup_LiDAR();
 bool setup_I2C();
-int16_t get_LiDAR_reading(int LiDAR_sel);
-
 void setup_IR();
 bool get_IR1_status();
 bool get_IR2_status();

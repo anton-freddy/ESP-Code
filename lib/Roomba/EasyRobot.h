@@ -1,8 +1,5 @@
 #include <Arduino.h>
-#include <FlexyStepperCustom.h>
-#include <FastAccelStepper.h>
 #include <math.h>
-#include <ArduinoQueue.h>
 #include <AS5600_Wire.h>
 #include <AS5600_Wire1.h>
 #include <Wire.h>
@@ -24,7 +21,8 @@ enum MoveState
   BACK,
   ERROR,
   BACK_OFF,
-  RUNNING
+  RUNNING,
+  WAIT
 };
 
 enum unit
