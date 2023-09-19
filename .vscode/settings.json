@@ -51,5 +51,7 @@
     },
     "cSpell.words": [
         "MMSS"
-    ]
+    ],
+    "C_Cpp.errorSquiggles": "disabled",
+    "cmake.configureOnOpen": false
 }
